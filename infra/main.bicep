@@ -120,6 +120,11 @@ module storageAccount './storage/storage-account.bicep' = {
   }
 }
 
+resource storageAccountRef 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+  name: storageAccount.name
+  scope: resourceGroup
+}
+
 module appServicePlan './compute/app-service-plan.bicep' = {
   name: !empty(appServicePlanName) ? appServicePlanName : '${abbrs.appServicePlan}${resourceToken}'
   scope: resourceGroup
@@ -140,7 +145,7 @@ module functionAppSettings './security/key-vault-secret-environment-variables.bi
   params: {
     keyVaultVariables: [
       {
-        name: 'AzureWebJobsStorage'
+        name: 'StorageAccountConnectionString'
         keyVaultSecretUri: storageAccount.outputs.connectionStringSecretUri
       }
     ]
@@ -166,6 +171,10 @@ module functionApp './compute/function-app.bicep' = {
           value: applicationInsights.outputs.connectionString
         }
         {
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.outputs.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
+        }
+        {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
         }
@@ -183,4 +192,15 @@ module functionApp './compute/function-app.bicep' = {
         }
       ], functionAppSettings.outputs.environmentVariables)
   }
+}
+
+output resourceGroupInfo object = {
+  id: resourceGroup.id
+  name: resourceGroup.name
+}
+
+output functionAppInfo object = {
+  id: functionApp.outputs.id
+  name: functionApp.outputs.name
+  host: functionApp.outputs.host
 }
