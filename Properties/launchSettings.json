@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "event_processing": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7063",
+      "launchBrowser": false
+    }
+  }
+}

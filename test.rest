@@ -1,0 +1,12 @@
+POST http://localhost:7071/api/WorkflowOrc_HttpStart
+
+{
+  "name": "samplesec",
+  "source": "KeyVault",
+  "destination": "BlobStorage",
+  "blobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "sec2bcreated.txt",
+    "containerName": "workflows"
+  }
+}
