@@ -1,22 +1,24 @@
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using System.Collections.Generic;
-namespace event_processing
-{
+
+namespace event_processing;
+
 public static class KeyVaultActivities
 {
     private const string DefaultSecretValue = "N/A";
 
-    [FunctionName("GetSecretFromKeyVault")]
-    public static async Task<string> GetSecretFromKeyVault([ActivityTrigger] string secretName, ILogger log)
+    [Function(nameof(GetSecretFromKeyVault))]
+    public static async Task<string> GetSecretFromKeyVault([ActivityTrigger] string secretName, FunctionContext executionContext)
     {
-       if (string.IsNullOrWhiteSpace(secretName))
+        var log = executionContext.GetLogger(nameof(GetSecretFromKeyVault));
+
+        if (string.IsNullOrWhiteSpace(secretName))
         {
             throw new ArgumentException("Secret name must not be null or whitespace.");
         }
 
         var client = InitializeKeyVaultClient(log); // Throws InvalidOperationException if URL is not configured or the client cannot be instantiated
-        
+
         try
         {
             KeyVaultSecret secret = await client.GetSecretAsync(secretName);
@@ -34,13 +36,16 @@ public static class KeyVaultActivities
             throw; // Rethrow exceptions other than not found
         }
     }
-    [FunctionName("GetMultipleSecretsFromKeyVault")]
-    public static async Task<List<string>> GetMultipleSecretsFromKeyVault([ActivityTrigger] List<string> secretNames, ILogger log)
+
+    [Function(nameof(GetMultipleSecretsFromKeyVault))]
+    public static async Task<List<string>> GetMultipleSecretsFromKeyVault([ActivityTrigger] List<string> secretNames, FunctionContext executionContext)
     {
+        var log = executionContext.GetLogger(nameof(GetMultipleSecretsFromKeyVault));
+
         var secretsValues = new List<string>();
 
         var client = InitializeKeyVaultClient(log); // Throws InvalidOperationException if URL is not configured or the client cannot be instantiated
-        
+
         foreach (var secretName in secretNames)
         {
             if (string.IsNullOrWhiteSpace(secretName))
@@ -69,7 +74,8 @@ public static class KeyVaultActivities
         }
 
         return secretsValues;
-    }    
+    }
+
     private static SecretClient InitializeKeyVaultClient(ILogger log)
     {
         var keyVaultUrl = Environment.GetEnvironmentVariable("KEY_VAULT_URL");
@@ -93,6 +99,4 @@ public static class KeyVaultActivities
             throw new InvalidOperationException("Failed to initialize Key Vault client.", ex);
         }
     }
-
-}
 }

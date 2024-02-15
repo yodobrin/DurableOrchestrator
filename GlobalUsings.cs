@@ -1,9 +1,0 @@
-global using System;
-global using System.Threading.Tasks;
-global using System.Net.Http;
-global using Microsoft.Azure.WebJobs;
-global using Microsoft.Azure.WebJobs.Extensions.Http;
-global using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-global using Microsoft.Extensions.Logging;
-global using System.Text.Json;
-global using System.Text.Json.Serialization;
