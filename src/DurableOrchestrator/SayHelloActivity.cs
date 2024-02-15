@@ -1,5 +1,5 @@
 
-namespace event_processing;
+namespace DurableOrchestrator;
 
 public static class SayHelloActivity
 {

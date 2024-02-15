@@ -11,7 +11,7 @@ $InfrastructureOutput = (./infra/Deploy-Infrastructure.ps1 -DeploymentName $Depl
 $ResourceGroupName = $InfrastructureOutput.resourceGroupInfo.value.name
 $FunctionAppName = $InfrastructureOutput.functionAppInfo.value.name
 
-Write-Host "Deploying function app..."
+Write-Host "Building and deploying Durable Orchestrator..."
 
 Set-Location -Path $PSScriptRoot
 
@@ -20,7 +20,5 @@ dotnet publish ./src/DurableOrchestrator/DurableOrchestrator.csproj -c Release -
 
 $FunctionAppZipPath = "./artifacts/DurableOrchestrator.zip"
 Compress-Archive -Path "./artifacts/DurableOrchestrator/*" -DestinationPath $FunctionAppZipPath -Force
-
-
 
 az functionapp deployment source config-zip -g $ResourceGroupName -n $FunctionAppName --src $FunctionAppZipPath

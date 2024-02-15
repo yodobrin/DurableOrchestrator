@@ -1,7 +1,7 @@
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 
-namespace event_processing;
+namespace DurableOrchestrator;
 
 public static class KeyVaultActivities
 {

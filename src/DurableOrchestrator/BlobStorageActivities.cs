@@ -2,7 +2,7 @@ using Azure.Identity;
 using System.Text;
 using Azure.Storage.Blobs;
 
-namespace event_processing;
+namespace DurableOrchestrator;
 
 public static class BlobStorageActivities
 {

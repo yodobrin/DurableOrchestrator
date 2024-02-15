@@ -5,3 +5,8 @@ var host = new HostBuilder()
     .Build();
 
 host.Run();
+
+/// <summary>
+/// Defines the entry point for the application.
+/// </summary>
+public partial class Program;
