@@ -1,5 +1,5 @@
-using Azure.Identity;
 using System.Text;
+using Azure.Identity;
 using Azure.Storage.Blobs;
 
 namespace DurableOrchestrator;
@@ -11,19 +11,25 @@ public static class BlobStorageActivities
     {
         var log = executionContext.GetLogger(nameof(GetBlobContentAsString));
 
-        if (!ValidateInput(input, log, checkContent: false)) return null;
+        if (!ValidateInput(input, log, checkContent: false))
+        {
+            return null;
+        }
 
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null) return null; // GetBlobClient logs the error
+            if (blobClient == null)
+            {
+                return null; // GetBlobClient logs the error
+            }
 
-            var downloadResult = await blobClient.DownloadContentAsync();
+            var downloadResult = await blobClient.DownloadContentAsync().ConfigureAwait(false);
             return downloadResult.Value.Content.ToString();
         }
         catch (Exception ex)
         {
-            log.LogError($"Error in GetBlobContentAsString: {ex.Message}");
+            log.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
             return null;
         }
     }
@@ -33,22 +39,26 @@ public static class BlobStorageActivities
     {
         var log = executionContext.GetLogger(nameof(GetBlobContentAsBuffer));
 
-        if (!ValidateInput(input, log, checkContent: false)) return null;
+        if (!ValidateInput(input, log, checkContent: false))
+        {
+            return null;
+        }
 
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null) return null; // GetBlobClient logs the error
-
-            using (var memoryStream = new MemoryStream())
+            if (blobClient == null)
             {
-                await blobClient.DownloadToAsync(memoryStream);
-                return memoryStream.ToArray();
+                return null; // GetBlobClient logs the error
             }
+
+            using var memoryStream = new MemoryStream();
+            await blobClient.DownloadToAsync(memoryStream).ConfigureAwait(false);
+            return memoryStream.ToArray();
         }
         catch (Exception ex)
         {
-            log.LogError($"Error in GetBlobContentAsBuffer: {ex.Message}");
+            log.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
             return null;
         }
     }
@@ -58,22 +68,26 @@ public static class BlobStorageActivities
     {
         var log = executionContext.GetLogger(nameof(WriteStringToBlob));
 
-        if (!ValidateInput(input, log)) return;
+        if (!ValidateInput(input, log))
+        {
+            return;
+        }
 
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null) return; // GetBlobClient logs the error
-
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content)))
+            if (blobClient == null)
             {
-                await blobClient.UploadAsync(stream, overwrite: true);
-                log.LogInformation($"Successfully uploaded content to blob: {input.BlobName} in container: {input.ContainerName}");
+                return; // GetBlobClient logs the error
             }
+
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
+            await blobClient.UploadAsync(stream, overwrite: true).ConfigureAwait(false);
+            log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}", input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
-            log.LogError($"Error in WriteStringToBlob: {ex.Message}");
+            log.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
         }
     }
 
@@ -82,22 +96,26 @@ public static class BlobStorageActivities
     {
         var log = executionContext.GetLogger(nameof(WriteBufferToBlob));
 
-        if (!ValidateInput(input, log, checkContent: false)) return;
+        if (!ValidateInput(input, log, checkContent: false))
+        {
+            return;
+        }
 
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null) return; // GetBlobClient logs the error
-
-            using (var stream = new MemoryStream(input.Buffer))
+            if (blobClient == null)
             {
-                await blobClient.UploadAsync(stream, overwrite: true);
-                log.LogInformation($"Successfully uploaded buffer to blob: {input.BlobName} in container: {input.ContainerName}");
+                return; // GetBlobClient logs the error
             }
+
+            using var stream = new MemoryStream(input.Buffer);
+            await blobClient.UploadAsync(stream, overwrite: true).ConfigureAwait(false);
+            log.LogInformation("Successfully uploaded buffer to blob: {BlobName} in container: {ContainerName}", input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
-            log.LogError($"Error in WriteBufferToBlob: {ex.Message}");
+            log.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
         }
     }
 
@@ -125,9 +143,8 @@ public static class BlobStorageActivities
         }
         catch (Exception ex)
         {
-            log.LogError($"Failed to create BlobClient: {ex.Message}");
+            log.LogError("Failed to create BlobClient: {Message}", ex.Message);
             throw;
-
         }
     }
 

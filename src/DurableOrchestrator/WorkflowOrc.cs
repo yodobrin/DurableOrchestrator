@@ -7,7 +7,7 @@ public static class WorkflowOrc
     {
         var log = context.CreateReplaySafeLogger("WorkflowOrc");
 
-        List<string> orchestrationResults = new List<string>();
+        var orchestrationResults = new List<string>();
 
         var workFlowInput = context.GetInput<WorkFlowInput>();
         if (workFlowInput == null)
@@ -29,20 +29,21 @@ public static class WorkflowOrc
         // Step 1: Retrieve the secret value
         try
         {
-            string secretName = workFlowInput.Name;
-            string secretValue = await context.CallActivityAsync<string>("GetSecretFromKeyVault", secretName);
+            var secretName = workFlowInput.Name;
+            var secretValue = await context.CallActivityAsync<string>("GetSecretFromKeyVault", secretName)
+                .ConfigureAwait(false);
             orchestrationResults.Add($"Successfully retrieved secret: {secretName}");
 
             // Update BlobStorageInfo with the secret value
             workFlowInput.BlobStorageInfo.Content = secretValue;
 
             // Step 2: Write the secret value to blob storage
-            await context.CallActivityAsync("WriteStringToBlob", workFlowInput.BlobStorageInfo);
+            await context.CallActivityAsync("WriteStringToBlob", workFlowInput.BlobStorageInfo).ConfigureAwait(false);
             orchestrationResults.Add($"Successfully stored secret '{secretName}' in blob storage.");
         }
         catch (System.Exception ex)
         {
-            log.LogError($"Error during orchestration: {ex.Message}");
+            log.LogError("Error during orchestration: {Message}", ex.Message);
             orchestrationResults.Add($"Error: {ex.Message}");
         }
 
@@ -51,31 +52,30 @@ public static class WorkflowOrc
 
     [Function("WorkflowOrc_HttpStart")]
     public static async Task<HttpResponseData> HttpStart(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")]
+        HttpRequestData req,
         [DurableClient] DurableTaskClient starter,
         FunctionContext executionContext)
     {
         var log = executionContext.GetLogger("WorkflowOrc_HttpStart");
 
-        string requestBody = await req.ReadAsStringAsync();
+        var requestBody = await req.ReadAsStringAsync().ConfigureAwait(false);
 
         // Check for an empty request body as a more direct approach
         if (string.IsNullOrEmpty(requestBody))
         {
-            throw new ArgumentException("The request body must not be null or empty.", nameof(requestBody));
+            throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        WorkFlowInput? input = JsonSerializer.Deserialize<WorkFlowInput>(requestBody);
-        if (input == null)
-        {
-            throw new ArgumentException("The request body is not a valid WorkFlowInput.", nameof(requestBody));
-        }
+        var input = JsonSerializer.Deserialize<WorkFlowInput>(requestBody) ??
+                    throw new ArgumentException("The request body is not a valid WorkFlowInput.", nameof(req));
 
         // Function input comes from the request content.
-        string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("WorkflowOrc", input);
+        var instanceId =
+            await starter.ScheduleNewOrchestrationInstanceAsync("WorkflowOrc", input).ConfigureAwait(false);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 
-        return starter.CreateCheckStatusResponse(req, instanceId);
+        return await starter.CreateCheckStatusResponseAsync(req, instanceId).ConfigureAwait(false);
     }
 }

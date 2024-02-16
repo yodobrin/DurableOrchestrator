@@ -1,11 +1,9 @@
 global using System;
-global using System.Threading.Tasks;
-global using System.Net.Http;
-global using Microsoft.Extensions.Logging;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
-global using Microsoft.Azure.Functions.Worker.Http;
+global using System.Threading.Tasks;
 global using Microsoft.Azure.Functions.Worker;
+global using Microsoft.Azure.Functions.Worker.Http;
 global using Microsoft.DurableTask;
 global using Microsoft.DurableTask.Client;
 global using Microsoft.Extensions.Logging;

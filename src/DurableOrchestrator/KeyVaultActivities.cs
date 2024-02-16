@@ -21,18 +21,18 @@ public static class KeyVaultActivities
 
         try
         {
-            KeyVaultSecret secret = await client.GetSecretAsync(secretName);
-            log.LogInformation($"Successfully retrieved secret: {secretName}");
+            KeyVaultSecret secret = await client.GetSecretAsync(secretName).ConfigureAwait(false);
+            log.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
             return secret.Value;
         }
         catch (Azure.RequestFailedException ex) when (ex.Status == 404)
         {
-            log.LogWarning($"Secret not found: {secretName}. Using default value.");
+            log.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
             return DefaultSecretValue; // Return default value if secret not found
         }
         catch (Exception ex)
         {
-            log.LogError($"Error retrieving secret {secretName}: {ex.Message}");
+            log.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
             throw; // Rethrow exceptions other than not found
         }
     }
@@ -57,18 +57,18 @@ public static class KeyVaultActivities
 
             try
             {
-                KeyVaultSecret secret = await client.GetSecretAsync(secretName);
+                KeyVaultSecret secret = await client.GetSecretAsync(secretName).ConfigureAwait(false);
                 secretsValues.Add(secret.Value);
-                log.LogInformation($"Successfully retrieved secret: {secretName}");
+                log.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
             }
             catch (Azure.RequestFailedException ex) when (ex.Status == 404)
             {
-                log.LogWarning($"Secret not found: {secretName}. Defaulting to {DefaultSecretValue}");
+                log.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
                 secretsValues.Add(DefaultSecretValue);
             }
             catch (Exception ex)
             {
-                log.LogError($"Unexpected error retrieving secret {secretName}. Error: {ex.Message}. Defaulting to {DefaultSecretValue}");
+                log.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
                 secretsValues.Add(DefaultSecretValue);
             }
         }
@@ -95,7 +95,7 @@ public static class KeyVaultActivities
             // This catch block is for handling exceptions that might occur during the client's instantiation.
             // This could be due to issues with the DefaultAzureCredential not being able to obtain a token,
             // problems with the network, invalid Key Vault URL format, etc.
-            log.LogError($"An error occurred while creating the KeyVault client: {ex.Message}");
+            log.LogError("An error occurred while creating the KeyVault client: {Message}", ex.Message);
             throw new InvalidOperationException("Failed to initialize Key Vault client.", ex);
         }
     }
