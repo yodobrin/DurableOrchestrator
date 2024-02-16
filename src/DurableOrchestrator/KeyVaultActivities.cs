@@ -35,6 +35,10 @@ public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities>
         catch (Exception ex)
         {
             log.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
             throw; // Rethrow exceptions other than not found
         }
     }

@@ -32,6 +32,10 @@ public class BlobStorageActivities(BlobServiceClient blobServiceClient, ILogger<
         catch (Exception ex)
         {
             log.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
             return null;
         }
     }
@@ -58,6 +62,10 @@ public class BlobStorageActivities(BlobServiceClient blobServiceClient, ILogger<
         catch (Exception ex)
         {
             log.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
             return null;
         }
     }
@@ -84,6 +92,9 @@ public class BlobStorageActivities(BlobServiceClient blobServiceClient, ILogger<
         catch (Exception ex)
         {
             log.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
         }
     }
 
@@ -109,6 +120,9 @@ public class BlobStorageActivities(BlobServiceClient blobServiceClient, ILogger<
         catch (Exception ex)
         {
             log.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
         }
     }
 
