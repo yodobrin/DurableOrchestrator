@@ -30,15 +30,14 @@ public static class WorkflowOrc
         try
         {
             var secretName = workFlowInput.Name;
-            var secretValue = await context.CallActivityAsync<string>("GetSecretFromKeyVault", secretName)
-                .ConfigureAwait(false);
+            var secretValue = await context.CallActivityAsync<string>("GetSecretFromKeyVault", secretName);
             orchestrationResults.Add($"Successfully retrieved secret: {secretName}");
 
             // Update BlobStorageInfo with the secret value
             workFlowInput.BlobStorageInfo.Content = secretValue;
 
             // Step 2: Write the secret value to blob storage
-            await context.CallActivityAsync("WriteStringToBlob", workFlowInput.BlobStorageInfo).ConfigureAwait(false);
+            await context.CallActivityAsync("WriteStringToBlob", workFlowInput.BlobStorageInfo);
             orchestrationResults.Add($"Successfully stored secret '{secretName}' in blob storage.");
         }
         catch (System.Exception ex)
@@ -59,7 +58,7 @@ public static class WorkflowOrc
     {
         var log = executionContext.GetLogger("WorkflowOrc_HttpStart");
 
-        var requestBody = await req.ReadAsStringAsync().ConfigureAwait(false);
+        var requestBody = await req.ReadAsStringAsync();
 
         // Check for an empty request body as a more direct approach
         if (string.IsNullOrEmpty(requestBody))
@@ -72,10 +71,10 @@ public static class WorkflowOrc
 
         // Function input comes from the request content.
         var instanceId =
-            await starter.ScheduleNewOrchestrationInstanceAsync("WorkflowOrc", input).ConfigureAwait(false);
+            await starter.ScheduleNewOrchestrationInstanceAsync("WorkflowOrc", input);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 
-        return await starter.CreateCheckStatusResponseAsync(req, instanceId).ConfigureAwait(false);
+        return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 }

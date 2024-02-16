@@ -21,7 +21,7 @@ public static class KeyVaultActivities
 
         try
         {
-            KeyVaultSecret secret = await client.GetSecretAsync(secretName).ConfigureAwait(false);
+            KeyVaultSecret secret = await client.GetSecretAsync(secretName);
             log.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
             return secret.Value;
         }
@@ -57,7 +57,7 @@ public static class KeyVaultActivities
 
             try
             {
-                KeyVaultSecret secret = await client.GetSecretAsync(secretName).ConfigureAwait(false);
+                KeyVaultSecret secret = await client.GetSecretAsync(secretName);
                 secretsValues.Add(secret.Value);
                 log.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
             }

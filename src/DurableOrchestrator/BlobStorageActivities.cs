@@ -24,7 +24,7 @@ public static class BlobStorageActivities
                 return null; // GetBlobClient logs the error
             }
 
-            var downloadResult = await blobClient.DownloadContentAsync().ConfigureAwait(false);
+            var downloadResult = await blobClient.DownloadContentAsync();
             return downloadResult.Value.Content.ToString();
         }
         catch (Exception ex)
@@ -53,7 +53,7 @@ public static class BlobStorageActivities
             }
 
             using var memoryStream = new MemoryStream();
-            await blobClient.DownloadToAsync(memoryStream).ConfigureAwait(false);
+            await blobClient.DownloadToAsync(memoryStream);
             return memoryStream.ToArray();
         }
         catch (Exception ex)
@@ -82,7 +82,7 @@ public static class BlobStorageActivities
             }
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
-            await blobClient.UploadAsync(stream, overwrite: true).ConfigureAwait(false);
+            await blobClient.UploadAsync(stream, overwrite: true);
             log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}", input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
@@ -110,7 +110,7 @@ public static class BlobStorageActivities
             }
 
             using var stream = new MemoryStream(input.Buffer);
-            await blobClient.UploadAsync(stream, overwrite: true).ConfigureAwait(false);
+            await blobClient.UploadAsync(stream, overwrite: true);
             log.LogInformation("Successfully uploaded buffer to blob: {BlobName} in container: {ContainerName}", input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
