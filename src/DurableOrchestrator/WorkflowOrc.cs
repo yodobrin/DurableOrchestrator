@@ -1,11 +1,21 @@
+using DurableOrchestrator.Observability;
+using OpenTelemetry.Trace;
+
 namespace DurableOrchestrator;
 
-public static class WorkflowOrc
+[ActivitySource(nameof(WorkflowOrc))]
+public class WorkflowOrc
 {
-    [Function("WorkflowOrc")]
-    public static async Task<List<string>> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
+    private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(WorkflowOrc));
+    private const string OrchestrationName = "WorkflowOrc";
+    private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
+
+    [Function(OrchestrationName)]
+    public async Task<List<string>> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
     {
-        var log = context.CreateReplaySafeLogger("WorkflowOrc");
+        using var span = _tracer.StartActiveSpan(OrchestrationName);
+
+        var log = context.CreateReplaySafeLogger(OrchestrationName);
 
         var orchestrationResults = new List<string>();
 
@@ -30,14 +40,14 @@ public static class WorkflowOrc
         try
         {
             var secretName = workFlowInput.Name;
-            var secretValue = await context.CallActivityAsync<string>("GetSecretFromKeyVault", secretName);
+            var secretValue = await context.CallActivityAsync<string>(nameof(KeyVaultActivities.GetSecretFromKeyVault), secretName);
             orchestrationResults.Add($"Successfully retrieved secret: {secretName}");
 
             // Update BlobStorageInfo with the secret value
             workFlowInput.BlobStorageInfo.Content = secretValue;
 
             // Step 2: Write the secret value to blob storage
-            await context.CallActivityAsync("WriteStringToBlob", workFlowInput.BlobStorageInfo);
+            await context.CallActivityAsync(nameof(BlobStorageActivities.WriteStringToBlob), workFlowInput.BlobStorageInfo);
             orchestrationResults.Add($"Successfully stored secret '{secretName}' in blob storage.");
         }
         catch (System.Exception ex)
@@ -49,14 +59,16 @@ public static class WorkflowOrc
         return orchestrationResults;
     }
 
-    [Function("WorkflowOrc_HttpStart")]
-    public static async Task<HttpResponseData> HttpStart(
+    [Function(OrchestrationTriggerName)]
+    public async Task<HttpResponseData> HttpStart(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")]
         HttpRequestData req,
         [DurableClient] DurableTaskClient starter,
         FunctionContext executionContext)
     {
-        var log = executionContext.GetLogger("WorkflowOrc_HttpStart");
+        using var span = _tracer.StartActiveSpan(OrchestrationTriggerName);
+
+        var log = executionContext.GetLogger(OrchestrationTriggerName);
 
         var requestBody = await req.ReadAsStringAsync();
 
@@ -71,7 +83,7 @@ public static class WorkflowOrc
 
         // Function input comes from the request content.
         var instanceId =
-            await starter.ScheduleNewOrchestrationInstanceAsync("WorkflowOrc", input);
+            await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

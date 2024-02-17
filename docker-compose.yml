@@ -8,5 +8,10 @@ services:
     volumes:
       - azurite_data:/data
 
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+
 volumes:
   azurite_data:

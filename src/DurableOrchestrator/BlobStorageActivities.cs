@@ -1,15 +1,21 @@
 using System.Text;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using DurableOrchestrator.Observability;
+using OpenTelemetry.Trace;
 
 namespace DurableOrchestrator;
 
-public static class BlobStorageActivities
+[ActivitySource(nameof(BlobStorageActivities))]
+public class BlobStorageActivities(BlobServiceClient blobServiceClient, ILogger<BlobStorageActivities> log)
 {
+    private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(BlobStorageActivities));
+
     [Function(nameof(GetBlobContentAsString))]
-    public static async Task<string?> GetBlobContentAsString([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
+    public async Task<string?> GetBlobContentAsString([ActivityTrigger] BlobStorageInfo input,
+        FunctionContext executionContext)
     {
-        var log = executionContext.GetLogger(nameof(GetBlobContentAsString));
+        using var span = _tracer.StartActiveSpan(nameof(GetBlobContentAsString));
 
         if (!ValidateInput(input, log, checkContent: false))
         {
@@ -19,10 +25,6 @@ public static class BlobStorageActivities
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null)
-            {
-                return null; // GetBlobClient logs the error
-            }
 
             var downloadResult = await blobClient.DownloadContentAsync();
             return downloadResult.Value.Content.ToString();
@@ -30,14 +32,19 @@ public static class BlobStorageActivities
         catch (Exception ex)
         {
             log.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
             return null;
         }
     }
 
     [Function(nameof(GetBlobContentAsBuffer))]
-    public static async Task<byte[]?> GetBlobContentAsBuffer([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
+    public async Task<byte[]?> GetBlobContentAsBuffer([ActivityTrigger] BlobStorageInfo input,
+        FunctionContext executionContext)
     {
-        var log = executionContext.GetLogger(nameof(GetBlobContentAsBuffer));
+        using var span = _tracer.StartActiveSpan(nameof(GetBlobContentAsBuffer));
 
         if (!ValidateInput(input, log, checkContent: false))
         {
@@ -47,10 +54,6 @@ public static class BlobStorageActivities
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null)
-            {
-                return null; // GetBlobClient logs the error
-            }
 
             using var memoryStream = new MemoryStream();
             await blobClient.DownloadToAsync(memoryStream);
@@ -59,14 +62,18 @@ public static class BlobStorageActivities
         catch (Exception ex)
         {
             log.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
             return null;
         }
     }
 
     [Function(nameof(WriteStringToBlob))]
-    public static async Task WriteStringToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
+    public async Task WriteStringToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
-        var log = executionContext.GetLogger(nameof(WriteStringToBlob));
+        using var span = _tracer.StartActiveSpan(nameof(WriteStringToBlob));
 
         if (!ValidateInput(input, log))
         {
@@ -76,25 +83,25 @@ public static class BlobStorageActivities
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null)
-            {
-                return; // GetBlobClient logs the error
-            }
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);
-            log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}", input.BlobName, input.ContainerName);
+            log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
+                input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
             log.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
         }
     }
 
     [Function(nameof(WriteBufferToBlob))]
-    public static async Task WriteBufferToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
+    public async Task WriteBufferToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
-        var log = executionContext.GetLogger(nameof(WriteBufferToBlob));
+        using var span = _tracer.StartActiveSpan(nameof(WriteStringToBlob));
 
         if (!ValidateInput(input, log, checkContent: false))
         {
@@ -104,22 +111,22 @@ public static class BlobStorageActivities
         try
         {
             var blobClient = GetBlobClient(input, log);
-            if (blobClient == null)
-            {
-                return; // GetBlobClient logs the error
-            }
 
             using var stream = new MemoryStream(input.Buffer);
             await blobClient.UploadAsync(stream, overwrite: true);
-            log.LogInformation("Successfully uploaded buffer to blob: {BlobName} in container: {ContainerName}", input.BlobName, input.ContainerName);
+            log.LogInformation("Successfully uploaded buffer to blob: {BlobName} in container: {ContainerName}",
+                input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
             log.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
         }
     }
 
-    private static BlobClient GetBlobClient(BlobStorageInfo input, ILogger log)
+    private BlobClient GetBlobClient(BlobStorageInfo input, ILogger logger)
     {
         try
         {
@@ -128,40 +135,37 @@ public static class BlobStorageActivities
             {
                 if (string.IsNullOrWhiteSpace(input.ContainerName) || string.IsNullOrWhiteSpace(input.BlobName))
                 {
-                    log.LogError("Container name or blob name is not provided, and no BlobUri is specified.");
-                    throw new ArgumentException("Container name or blob name is not provided, and no BlobUri is specified.");
+                    logger.LogError("Container name or blob name is not provided, and no BlobUri is specified.");
+                    throw new ArgumentException(
+                        "Container name or blob name is not provided, and no BlobUri is specified.");
                 }
-                var blobServiceClient = new BlobServiceClient(new Uri($"https://{input.StorageAccountName}.blob.core.windows.net"), new DefaultAzureCredential());
+
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(input.ContainerName);
+                blobContainerClient.CreateIfNotExists();
                 blobClient = blobContainerClient.GetBlobClient(input.BlobName);
             }
             else
             {
                 blobClient = new BlobClient(new Uri(input.BlobUri), new DefaultAzureCredential());
             }
+
             return blobClient;
         }
         catch (Exception ex)
         {
-            log.LogError("Failed to create BlobClient: {Message}", ex.Message);
+            logger.LogError("Failed to create BlobClient: {Message}", ex.Message);
             throw;
         }
     }
 
     private static bool ValidateInput(BlobStorageInfo input, ILogger log, bool checkContent = true)
     {
-        if (input == null)
+        if (!checkContent || !string.IsNullOrWhiteSpace(input.Content))
         {
-            log.LogError("Input is null.");
-            return false;
+            return true;
         }
 
-        if (checkContent && string.IsNullOrWhiteSpace(input.Content))
-        {
-            log.LogWarning("Content is null or whitespace.");
-            return false;
-        }
-
-        return true;
+        log.LogWarning("Content is null or whitespace.");
+        return false;
     }
 }
