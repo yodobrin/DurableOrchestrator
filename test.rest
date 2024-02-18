@@ -1,3 +1,4 @@
+
 POST http://localhost:7071/api/WorkflowOrc_HttpStart
 
 {
@@ -8,5 +9,17 @@ POST http://localhost:7071/api/WorkflowOrc_HttpStart
     "storageAccountName": "ydinventorylogs",
     "blobName": "sec2bcreated.txt",
     "containerName": "workflows"
+  }
+}
+
+###
+POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
+
+{
+  "name": "sampleName",
+  "blobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "function.csv",
+    "containerName": "sourcecontainer"
   }
 }

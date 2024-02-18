@@ -19,6 +19,8 @@ public class WorkFlowInput
 
 public class BlobStorageInfo
 {
+    [JsonPropertyName("storageAccountName")]
+    public string StorageAccountName { get; set; } = string.Empty;
     [JsonPropertyName("blobName")]
     public string BlobName { get; set; } = string.Empty;
 
