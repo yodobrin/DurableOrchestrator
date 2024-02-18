@@ -13,13 +13,21 @@ POST http://localhost:7071/api/WorkflowOrc_HttpStart
 }
 
 ###
+
 POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
 
 {
   "name": "sampleName",
-  "blobStorageInfo": {
+  "source": "sourceIdentifier",
+  "destination": "destinationIdentifier",
+  "sourceBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "function.csv",
+    "blobName": "functions.csv",
     "containerName": "sourcecontainer"
+  },
+  "targetBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "copy_of_functions.csv",
+    "containerName": "targetcontainer"
   }
 }

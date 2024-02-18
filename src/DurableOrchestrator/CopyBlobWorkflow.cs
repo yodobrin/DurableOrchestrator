@@ -33,19 +33,20 @@ public class CopyBlobWorkflow
             return orchestrationResults; // Exit the orchestration due to missing required details
         }
         // step 3: get blob content to be copied
-        byte [] blobContent = await context.CallActivityAsync<byte[]>("GetBlobContentAsBuffer", workFlowInput.BlobStorageInfo);
+        var blobContent = await context.CallActivityAsync<byte[]>("GetBlobContentAsBuffer", workFlowInput.SourceBlobStorageInfo);
+        log.LogInformation($"Retrieved blob content size: {blobContent?.Length ?? 0} bytes.");        
 
         // step 4: write to another blob
-        workFlowInput.BlobStorageInfo!.Buffer = blobContent;
-        await context.CallActivityAsync<string>("WriteBufferToBlob",workFlowInput.BlobStorageInfo);
+        workFlowInput.SourceBlobStorageInfo!.Buffer = blobContent;
+        await context.CallActivityAsync<string>("WriteBufferToBlob",workFlowInput.TargetBlobStorageInfo);
         return orchestrationResults;
     }
 
     static bool ValidateWorkFlowInput(WorkFlowInput workFlowInput, ILogger log)
     {
-        if (string.IsNullOrEmpty(workFlowInput.Name) || workFlowInput.BlobStorageInfo == null ||
-            string.IsNullOrEmpty(workFlowInput.BlobStorageInfo.BlobName) || 
-            string.IsNullOrEmpty(workFlowInput.BlobStorageInfo.ContainerName))
+        if (string.IsNullOrEmpty(workFlowInput.Name) || workFlowInput.SourceBlobStorageInfo == null ||
+            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.BlobName) || 
+            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.ContainerName))
         {
             log.LogError("Missing required details in WorkFlowInput or BlobStorageInfo.");
             return false;

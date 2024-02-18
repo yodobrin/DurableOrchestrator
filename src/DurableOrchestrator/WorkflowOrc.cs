@@ -27,9 +27,9 @@ public class WorkflowOrc
             return orchestrationResults; // Exit the orchestration due to missing WorkFlowInput
         }
 
-        if (string.IsNullOrEmpty(workFlowInput.Name) || workFlowInput.BlobStorageInfo == null ||
-            string.IsNullOrEmpty(workFlowInput.BlobStorageInfo.BlobName) ||
-            string.IsNullOrEmpty(workFlowInput.BlobStorageInfo.ContainerName))
+        if (string.IsNullOrEmpty(workFlowInput.Name) || workFlowInput.SourceBlobStorageInfo == null ||
+            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.BlobName) ||
+            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.ContainerName))
         {
             log.LogError("Missing required details in WorkFlowInput or BlobStorageInfo.");
             orchestrationResults.Add("Missing required details in WorkFlowInput or BlobStorageInfo.");
@@ -44,10 +44,10 @@ public class WorkflowOrc
             orchestrationResults.Add($"Successfully retrieved secret: {secretName}");
 
             // Update BlobStorageInfo with the secret value
-            workFlowInput.BlobStorageInfo.Content = secretValue;
+            workFlowInput.SourceBlobStorageInfo.Content = secretValue;
 
             // Step 2: Write the secret value to blob storage
-            await context.CallActivityAsync(nameof(BlobStorageActivities.WriteStringToBlob), workFlowInput.BlobStorageInfo);
+            await context.CallActivityAsync(nameof(BlobStorageActivities.WriteStringToBlob), workFlowInput.SourceBlobStorageInfo);
             orchestrationResults.Add($"Successfully stored secret '{secretName}' in blob storage.");
         }
         catch (System.Exception ex)

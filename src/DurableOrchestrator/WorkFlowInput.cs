@@ -12,9 +12,11 @@ public class WorkFlowInput
     [JsonPropertyName("destination")]
     public string Destination { get; set; } = string.Empty;
 
-    [JsonPropertyName("blobStorageInfo")]
-    public BlobStorageInfo? BlobStorageInfo { get; set; }
-
+    [JsonPropertyName("sourceBlobStorageInfo")]
+    public BlobStorageInfo? SourceBlobStorageInfo { get; set; }
+    
+    [JsonPropertyName("targetBlobStorageInfo")]
+    public BlobStorageInfo? TargetBlobStorageInfo { get; set; }
 }
 
 public class BlobStorageInfo

@@ -20,6 +20,7 @@ var host = new HostBuilder()
 
         // Pass IConfiguration to AddBlobStorage where it is needed to read BlobSource and BlobTarget configurations
         services.AddBlobStorage(builder.Configuration);
+        services.AddBlobStorageClients(builder.Configuration);
     })
     .Build();
 
