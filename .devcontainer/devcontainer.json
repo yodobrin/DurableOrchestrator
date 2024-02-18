@@ -1,0 +1,21 @@
+{
+    "name": "Azure Functions & Azure CLI (.NET 8.0)",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-azuretools.vscode-azurefunctions",
+                "ms-vscode.azurecli"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    },
+    "forwardPorts": [7071],
+    "remoteUser": "vscode",
+    "postCreateCommand": "echo 'Remember to run az login manually to authenticate Azure CLI'"
+}
