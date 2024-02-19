@@ -4,7 +4,6 @@
   "reader": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
   "rbacAdministrator": "f58310d9-a9f6-439a-9e8d-f62e7b41a168",
   "userAccessAdministrator": "18d7d88d-d35e-4fb5-a5c3-7773c20a72d9",
-
   "classicVirtualMachineContributor": "d73bb868-a0df-4d4d-bd69-98a00b01fccb",
   "dataOperatorForManagedDisks": "959f8984-c045-4866-89c7-12bf9737be2e",
   "diskBackupReader": "3e5e47e6-65f7-47ef-90b5-e5dd4d455f24",
@@ -16,7 +15,6 @@
   "virtualMachineDataAccessAdministrator": "66f75aeb-eabe-4b70-9f1e-c350c4c9ad04",
   "virtualMachineUserLogin": "fb879df8-f326-4884-b1cf-06f3ad86be52",
   "windowsAdminCenterAdministratorLogin": "a6333a3e-0164-44c3-b281-7a577aff287f",
-
   "cdnEndpointContributor": "426e0c7f-0c7e-4658-b36f-ff54d6c29b45",
   "cdnEndpointReader": "871e35f6-b5c1-49cc-a043-bde969a0f2cd",
   "cdnProfileContributor": "ec156ff8-a8d1-4d15-830c-5b80698ca432",
@@ -26,7 +24,6 @@
   "networkContributor": "4d97b98b-1d4f-4787-a291-c67834d212e7",
   "privateDNSZoneContributor": "b12aa53e-6015-4669-85d0-8515ebb3ae7f",
   "trafficManagerContributor": "a4b10055-b0c7-44c2-b00f-c7b5b3550cf7",
-
   "avereContributor": "4f8fab4f-1852-4a58-a46a-8eaf358af14a",
   "avereOperator": "c025889f-8102-4ebf-b32c-fc0c6f0c6bd9",
   "backupContributor": "5e467623-bb1f-42f4-a55d-6e525e11384b",
@@ -58,7 +55,6 @@
   "storageQueueDataReader": "19e7f393-937e-4f77-808e-94535e297925",
   "storageTableDataContributor": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
   "storageTableDataReader": "76199698-9eea-4c19-bc75-cec21354c6b6",
-
   "azureMapsDataContributor": "8f5e0ce6-4f7b-4dcf-bddf-e6f48634a204",
   "azureMapsDataReader": "423170ca-a8f6-4b0f-8487-9e4eb8f49bfa",
   "azureSpringCloudConfigServerContributor": "a06f5c24-21a7-4e1a-aa2b-f19eb6684f5b",
@@ -82,7 +78,6 @@
   "signalRPubSubContributor": "8cf5e20a-e4b2-4e9d-b3a1-5ceb692c2761",
   "webPlanContributor": "2cc479cb-7b4d-49a8-b449-8c00fd0f0a4b",
   "websiteContributor": "de139f84-1756-47ae-9be6-808fbbe84772",
-
   "acrDelete": "c2f4ef07-c644-48eb-af81-4b1b4947fb11",
   "acrImageSigner": "6cef56e8-d556-48e5-a04f-b8e64114680f",
   "acrPull": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
@@ -101,7 +96,6 @@
   "aksRBACClusterAdmin": "b1ff04bb-8a4e-4dc4-8eb5-8693973ce19b",
   "aksRBACReader": "7f6c6a51-bcf8-42ba-9220-52d62157d7db",
   "aksRBACWriter": "a7ffa36f-339b-4b5c-8bdf-e2c188b2c0eb",
-
   "azureConnectedSQLServerOnboarding": "e8113dce-c529-4d33-91fa-e9b972617508",
   "cosmosDBAccountReader": "fbdf93bf-df7d-467e-a4d2-9458aa1360c8",
   "cosmosDBOperator": "230815da-be43-4aae-9cb4-875f7bd000aa",
@@ -113,7 +107,6 @@
   "sqlManagedInstanceContributor": "4939a1f6-9ae0-4e48-a1e0-f2cbe897382d",
   "sqlSecurityManager": "056cd41c-7e88-42e1-933e-88ba6a50c9c3",
   "sqlServerContributor": "6d8ee4ec-f05a-4a1d-8b00-a9b17e38b437",
-
   "azureEventHubsDataOwner": "f526a384-b230-433a-b45c-95f59c4a2dec",
   "azureEventHubsDataReceiver": "a638d3c7-ab3a-418d-83e6-5f17a39d4fde",
   "azureEventHubsDataSender": "2b629674-e913-4c01-ae53-ef4638d8f975",
@@ -126,7 +119,6 @@
   "schemaRegistryContributor": "5dffeca3-4936-4216-b2bc-10343a5abb25",
   "schemaRegistryReader": "2c56ea50-c6b3-40a6-83c0-9d98858bc7d2",
   "streamAnalyticsQueryTester": "1ec5b3c1-b17e-4e25-8312-2acb3c3c5abf",
-
   "azureMLDataScientist": "f6c7c914-8db3-469d-8ca1-694a8f32e121",
   "cognitiveServicesContributor": "25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68",
   "cognitiveServicesCustomVisionContributor": "c1ff6cc2-c111-46fe-8896-e0ef812ad9f3",
@@ -143,7 +135,9 @@
   "cognitiveServicesQnAMakerReader": "466ccd10-b268-4a11-b098-b4849f024126",
   "cognitiveServicesUsagesReader": "bba48692-92b0-4667-a9ad-c31c7b334ac2",
   "cognitiveServicesUser": "a97b65f3-24c7-4388-baec-2e87135dc908",
-
+  "cognitiveServicesLanguageReader": "7628b7b8-a8b2-4cdc-b46f-e9b35248918e",
+  "cognitiveServicesLanguageWriter": "f2310ca1-dc64-4889-bb49-c8e0fa3d47a8",
+  "cognitiveServicesLanguageOwner": "f07febfe-79bc-46b1-8b37-790e26e6e498",
   "deviceUpdateAdministrator": "02ca0879-e8e4-47a5-a61e-5c618b76e64a",
   "deviceUpdateContentAdministrator": "0378884a-3af5-44ab-8323-f5b22f9f3c98",
   "deviceUpdateContentReader": "d1ee9a80-8b14-47f0-bdc2-f4a351625a7b",
@@ -154,13 +148,11 @@
   "iotHubDataReader": "b447c946-2db7-41ec-983d-d8bf3b1c77e3",
   "iotHubRegistryContributor": "4ea46cd5-c1b2-4a8e-910b-273211f9ce47",
   "iotHubTwinContributor": "494bdba2-168f-4f31-a0a1-191d2f7c028c",
-
   "remoteRenderingAdministrator": "3df8b902-2a6f-47c7-8cc5-360e9b272a7e",
   "remoteRenderingClient": "d39065c4-c120-43c9-ab0a-63eed9795f0a",
   "spatialAnchorsAccountContributor": "8bbe83f1-e2a6-4df7-8cb4-4e04d4e5c827",
   "spatialAnchorsAccountOwner": "70bbe301-9835-447d-afdd-19eb3167307c",
   "spatialAnchorsAccountReader": "5d51204f-eb77-4b1c-b86a-2ec626c49413",
-
   "apiManagementServiceContributor": "312a565d-c81f-4fd8-895a-4e21e48d571c",
   "apiManagementServiceOperator": "e022efe7-f5ba-4159-bbe4-b44f577e9b61",
   "apiManagementServiceReader": "71522526-b88f-4d52-b57f-d31fc3546d0d",
@@ -193,12 +185,10 @@
   "intelligentSystemsAccountContributor": "03a6d094-3444-4b3d-88af-7477090a9e5e",
   "logicAppContributor": "87a39d53-fc1b-424a-814c-f7e04687dc9e",
   "logicAppOperator": "515c2055-d9d4-4321-b1b9-bd0c9a0f79fe",
-
   "domainServicesContributor": "eeaeda52-9324-47f6-8069-5d5bade478b2",
   "domainServicesReader": "361898ef-9ed1-48c2-849c-a832951106bb",
   "managedIdentityContributor": "e40ec5ca-96e0-45a2-b4ff-59039f2c2b59",
   "managedIdentityOperator": "f1a07417-d97a-45cb-824c-7a7467783830",
-
   "appComplianceAutomationAdministrator": "0f37683f-2463-46b6-9ce7-9b788b988ba2",
   "appComplianceAutomationReader": "ffc6bbe0-e443-4c3b-bf54-26581bb2f78e",
   "attestationContributor": "bbf86eb8-f7b4-4cce-96e4-18cddf81d86e",
@@ -222,7 +212,6 @@
   "securityAdmin": "fb1c8493-542b-48eb-b624-b4c8fea62acd",
   "securityAssessmentContributor": "612c2aa1-cb24-443b-ac28-3ab7272de6f5",
   "securityReader": "39bc4728-0917-49c7-9d2c-d95423bc2eb4",
-
   "devTestLabsUser": "76283e04-6283-4c54-8f91-bcf1374a3c64",
   "labAssistant": "ce40b423-cede-4313-a93f-9b28290b72e1",
   "labContributor": "5daaa2af-1fe8-407c-9122-bba179798270",
@@ -230,7 +219,6 @@
   "labOperator": "a36e6959-b6be-4b12-8e9f-ef4b474d304d",
   "labServicesContributor": "f69b8690-cc87-41d6-b77a-a4bc3c0a966f",
   "labServicesReader": "2a5c394f-5eb7-4d4f-9c8e-e8eae39faebc",
-
   "applicationInsightsComponentContributor": "ae349356-3a1b-4a5e-921d-050484c6347e",
   "applicationInsightsSnapshotDebugger": "08954f03-6346-4c2e-81c0-ec3a5cfae23b",
   "monitoringContributor": "749f88d5-cbae-40b8-bcfc-e573ddc772fa",
@@ -238,7 +226,6 @@
   "monitoringReader": "43d0d8ad-25c7-4714-9337-8ba259a9fe05",
   "workbookContributor": "e8ddcd69-c73f-4f9f-9844-4100522f16ad",
   "workbookReader": "b279062a-9be3-42a0-92ae-8b3cf002ec4d",
-
   "automationContributor": "f353d9bd-d4a6-484e-a77a-8050b599b867",
   "automationJobOperator": "4fe576fe-1146-4730-92eb-48519fa6bf9f",
   "automationOperator": "d3881f73-407a-4167-8283-e981cbba0404",
@@ -276,7 +263,6 @@
   "tagContributor": "4a9ae827-6dc8-4573-8ac7-8239d42aa03f",
   "templateSpecContributor": "1c9b6475-caf0-4164-b5a1-2142a7116f4b",
   "templateSpecReader": "392ae280-861d-42bd-9ea5-08ee6d83b80e",
-
   "desktopVirtualizationApplicationGroupContributor": "86240b0e-9422-4c43-887b-b61143f32ba8",
   "desktopVirtualizationApplicationGroupReader": "aebf23d0-b568-4e86-b8f9-fe83a2c6ab55",
   "desktopVirtualizationContributor": "082f0a83-3be5-4ba1-904c-961cca79b387",
@@ -288,7 +274,6 @@
   "desktopVirtualizationUserSessionOperator": "ea4bfff8-7fb4-485a-aadd-d4129a0ffaa6",
   "desktopVirtualizationWorkspaceContributor": "21efdde3-836f-432b-bf3d-3e8e734d4b2b",
   "desktopVirtualizationWorkspaceReader": "0fa44ee9-7a7d-466b-9bb2-2bf446b1204d",
-
   "azureDigitalTwinsDataOwner": "bcd981a7-7f74-457b-83e1-cceb9e632ffe",
   "azureDigitalTwinsDataReader": "d57506d4-4c8d-48b1-8587-93c323f6a5a3",
   "bizTalkContributor": "5e3c6656-6cfa-4708-81fe-0de47ac73342",
