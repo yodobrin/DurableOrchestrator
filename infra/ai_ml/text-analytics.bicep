@@ -29,9 +29,14 @@ resource textAnalytics 'Microsoft.CognitiveServices/accounts@2023-10-01-preview'
   properties: {
     customSubDomainName: toLower(name)
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
   }
   sku: {
-    name: 'S0'
+    name: 'S'
   }
 }
 
