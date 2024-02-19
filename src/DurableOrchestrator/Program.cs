@@ -6,15 +6,21 @@ using Microsoft.Extensions.Hosting;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
-    .ConfigureAppConfiguration((_, configuration) =>
+    .ConfigureAppConfiguration((hostContext, configuration) =>
     {
-        configuration.AddEnvironmentVariables();
+        configuration.SetBasePath(hostContext.HostingEnvironment.ContentRootPath)
+                     .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                     .AddEnvironmentVariables();
     })
     .ConfigureServices((builder, services) =>
     {
+        // No changes needed here for KeyVault and Observability
         services.AddObservability(builder);
         services.AddKeyVault();
-        services.AddBlobStorage();
+
+        // Pass IConfiguration to AddBlobStorage where it is needed to read BlobSource and BlobTarget configurations
+        services.AddBlobStorage(builder.Configuration);
+        services.AddBlobStorageClients(builder.Configuration);
     })
     .Build();
 
@@ -24,3 +30,5 @@ host.Run();
 /// Defines the entry point for the application.
 /// </summary>
 public partial class Program;
+
+

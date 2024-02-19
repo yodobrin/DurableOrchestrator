@@ -1,12 +1,38 @@
+
 POST http://localhost:7071/api/WorkflowOrc_HttpStart
 
 {
   "name": "samplesec",
   "source": "KeyVault",
   "destination": "BlobStorage",
-  "blobStorageInfo": {
+  "sourceBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "sec2bcreated.txt",
-    "containerName": "workflows"
+    "blobName": "functions.csv",
+    "containerName": "sourcecontainer"
+  },
+  "targetBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "whatasecret2.txt",
+    "containerName": "targetcontainer"
+  }
+}
+
+###
+
+POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
+
+{
+  "name": "sampleName",
+  "source": "sourceIdentifier",
+  "destination": "destinationIdentifier",
+  "sourceBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "functions.csv",
+    "containerName": "sourcecontainer"
+  },
+  "targetBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "copy_3of_functions.csv",
+    "containerName": "targetcontainer"
   }
 }
