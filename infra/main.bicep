@@ -29,6 +29,8 @@ param tags object = {}
 param managedIdentityName string = ''
 @description('Name of the Key Vault. If empty, a unique name will be generated.')
 param keyVaultName string = ''
+@description('Name of the Text Analytics. If empty, a unique name will be generated.')
+param textAnalyticsName string = ''
 @description('Name of the Log Analytics Workspace. If empty, a unique name will be generated.')
 param logAnalyticsWorkspaceName string = ''
 @description('Name of the Application Insights. If empty, a unique name will be generated.')
@@ -76,6 +78,27 @@ module keyVault './security/key-vault.bicep' = {
       {
         principalId: managedIdentity.outputs.principalId
         roleDefinitionId: keyVaultSecretsOfficer.id
+      }
+    ]
+  }
+}
+
+resource cognitiveServicesLanguageOwner 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.cognitiveServicesLanguageOwner
+}
+
+module textAnalytics './ai_ml/text-analytics.bicep' = {
+  name: !empty(textAnalyticsName) ? textAnalyticsName : '${abbrs.languageService}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: !empty(textAnalyticsName) ? textAnalyticsName : '${abbrs.languageService}${resourceToken}'
+    location: location
+    tags: union(tags, {})
+    roleAssignments: [
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesLanguageOwner.id
       }
     ]
   }
@@ -204,6 +227,10 @@ module functionApp './compute/function-app.bicep' = {
         {
           name: 'KEY_VAULT_URI'
           value: keyVault.outputs.uri
+        }
+        {
+          name: 'TEXT_ANALYTICS_ENDPOINT'
+          value: textAnalytics.outputs.endpoint
         }
         {
           name: 'BlobSourceStorageAccountName'
