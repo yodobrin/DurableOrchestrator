@@ -12,7 +12,7 @@ $InfrastructureOutput = (./infra/Deploy-Infrastructure.ps1 -DeploymentName $Depl
 
 $ResourceGroupName = $InfrastructureOutput.resourceGroupInfo.value.name
 $FunctionAppName = $InfrastructureOutput.functionAppInfo.value.name
-$FunctionAppOutput = (az functionapp config container set --image $ContainerImageName --name $FunctionAppName --resource-group $ResourceGroupName --registry-username "" --registry-password "")
+$FunctionAppOutput = (az functionapp config container set --image $ContainerImageName --name $FunctionAppName --resource-group $ResourceGroupName)
 
 return @{
     infrastructureInfo = $InfrastructureOutput

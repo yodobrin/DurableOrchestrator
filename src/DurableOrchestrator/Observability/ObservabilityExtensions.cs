@@ -64,16 +64,6 @@ internal static class ObservabilityExtensions
 
         AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 
-        if (!string.IsNullOrEmpty(observabilitySettings.ApplicationInsightsConnectionString))
-        {
-            services.AddApplicationInsightsTelemetry(opts =>
-            {
-                opts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString;
-                opts.EnableAdaptiveSampling = false;
-                opts.EnableQuickPulseMetricStream = false;
-            });
-        }
-
         services.AddOpenTelemetry().WithTracing(tracerBuilder =>
         {
             tracerBuilder.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(builder.HostingEnvironment.ApplicationName).AddTelemetrySdk().AddEnvironmentVariableDetector());
