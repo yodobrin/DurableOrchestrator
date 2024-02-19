@@ -6,31 +6,24 @@ param location string = resourceGroup().location
 param tags object = {}
 
 type skuInfo = {
-    name: 'F1' | 'D1' | 'B1' | 'B2' | 'B3' | 'S1' | 'S2' | 'S3' | 'P1' | 'P2' | 'P3' | 'I1' | 'I2' | 'I3' | 'Y1'
+    tier: string
+    name: string
 }
 
 @description('App Service Plan SKU. Defaults to Y1.')
 param sku skuInfo = {
+    tier: 'Dynamic'
     name: 'Y1'
 }
-
-@description('App Service Plan Kind. Defaults to functionapp.')
-@allowed([
-    'functionapp'
-    'linux'
-])
-param kind string = 'functionapp'
-@description('Whether a Linux App Service Plan. Defaults to true.')
-param reserved bool = true
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
     name: name
     location: location
     tags: tags
     sku: sku
-    kind: kind
+    kind: 'linux'
     properties: {
-        reserved: reserved
+        reserved: true
     }
 }
 
