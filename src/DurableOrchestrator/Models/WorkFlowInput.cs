@@ -17,4 +17,7 @@ public class WorkFlowInput
     
     [JsonPropertyName("targetBlobStorageInfo")]
     public BlobStorageInfo? TargetBlobStorageInfo { get; set; }
+
+    [JsonPropertyName("textAnalyticsRequests")]
+    public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new List<TextAnalyticsRequest>();
 }

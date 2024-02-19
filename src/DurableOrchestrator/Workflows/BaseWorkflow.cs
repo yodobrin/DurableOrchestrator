@@ -20,40 +20,80 @@ public abstract class BaseWorkflow
         if(workFlowInput == null)
         {
             result.AddError("WorkFlowInput is null. No additional checks where performed.");
+            result.IsValid = false;
             return result;
         }
-            
-        if(string.IsNullOrEmpty(workFlowInput?.Name))
+        // Source and Target Blobs while marked as optional are required for the workflow to proceed
+        if(string.IsNullOrEmpty(workFlowInput.Name))
         {
             result.AddError("Workflow name is missing.");
         }            
         if (workFlowInput!.SourceBlobStorageInfo == null)
         {
             result.AddError("Source blob storage info is missing.");
+            result.IsValid = false;
         }            
         else
         {
             if (string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.BlobName))
-                {result.AddError("Source blob name is missing.");}
+            {
+                result.AddError("Source blob name is missing.");
+                // could be missing - not breaking the validity of the request
+            }
             if (string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.ContainerName))
-                {result.AddError("Source container name is missing.");}
+            {
+                result.AddError("Source container name is missing.");
+                result.IsValid = false;
+            }
             if (string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.StorageAccountName))
-                {result.AddError("Source storage account name is missing.");}
+            {
+                result.AddError("Source storage account name is missing.");
+                result.IsValid = false;
+            }
         }
         if(workFlowInput.TargetBlobStorageInfo == null)
         {
             result.AddError("Target blob storage info is missing.");
+            result.IsValid = false;
         }
         else
         {
             if (string.IsNullOrEmpty(workFlowInput.TargetBlobStorageInfo.BlobName))
-                {result.AddError("Target blob name is missing.");}
+            {
+                result.AddError("Target blob name is missing.");
+            }
             if (string.IsNullOrEmpty(workFlowInput.TargetBlobStorageInfo.ContainerName))
-                {result.AddError("Target container name is missing.");}
+            {
+                result.AddError("Target container name is missing.");
+                result.IsValid = false;
+            }
             if (string.IsNullOrEmpty(workFlowInput.TargetBlobStorageInfo.StorageAccountName))
-                {result.AddError("Target storage account name is missing.");}
+            {
+                result.AddError("Target storage account name is missing.");
+                result.IsValid = false;
+            }
         }
-
+        if(workFlowInput.TextAnalyticsRequests == null || workFlowInput.TextAnalyticsRequests.Count == 0)
+        {
+            result.AddError("TextAnalyticsRequests is missing or empty.");
+        }
+        else
+        {
+            // only if the individual list is empty -> request is not valid
+            foreach (var request in workFlowInput.TextAnalyticsRequests)
+            {
+                if (string.IsNullOrEmpty(request.TextsToAnalyze))
+                {
+                    result.AddError("TextsToAnalyze is missing or empty.");
+                    result.IsValid = false;
+                }
+                if (request.OperationTypes == null || request.OperationTypes.Count == 0)
+                {
+                    result.AddError("OperationTypes is missing or empty - what should be done with the text?");
+                    result.IsValid = false;
+                }
+            }
+        }
         return result;
     }
 
