@@ -36,3 +36,27 @@ public class BlobStorageInfo
     [JsonPropertyName("buffer")]
     public byte[] Buffer { get; set; } = Array.Empty<byte>();
 }
+
+public class ValidationResult
+{
+    public bool IsValid { get; set; }
+    public List<string> Errors { get; set; } = new List<string>();
+
+    public void AddError(string error)
+    {
+        IsValid = false;
+        Errors.Add(error);
+    }
+}
+
+// public class ExtractAndValidateResult
+// {
+//     public WorkFlowInput WorkFlowInput { get; set; }
+//     public ValidationResult ValidationResult { get; set; }
+
+//     public ExtractAndValidateResult(WorkFlowInput workFlowInput, ValidationResult validationResult)
+//     {
+//         WorkFlowInput = workFlowInput;
+//         ValidationResult = validationResult;
+//     }
+// }

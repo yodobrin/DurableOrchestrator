@@ -4,11 +4,12 @@ using OpenTelemetry.Trace;
 namespace DurableOrchestrator;
 
 [ActivitySource(nameof(WorkflowOrc))]
-public class WorkflowOrc
+public class WorkflowOrc : BaseWorkflow
 {
     private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(WorkflowOrc));
     private const string OrchestrationName = "WorkflowOrc";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
+    public WorkflowOrc() : base(nameof(WorkflowOrc)) { }
 
     [Function(OrchestrationName)]
     public async Task<List<string>> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
@@ -20,34 +21,36 @@ public class WorkflowOrc
         var orchestrationResults = new List<string>();
 
         var workFlowInput = context.GetInput<WorkFlowInput>();
-        if (workFlowInput == null)
+        ValidationResult validationResult = ValidateWorkFlowInputs(workFlowInput!);
+        if (!validationResult.IsValid)
         {
-            log.LogError("WorkFlowInput is null.");
-            orchestrationResults.Add("Workflow input was not provided.");
-            return orchestrationResults; // Exit the orchestration due to missing WorkFlowInput
+            orchestrationResults.AddRange(validationResult.Errors);
+            log.LogError("WorkFlowInput is invalid.");
+            return orchestrationResults; // Exit the orchestration due to validation errors
         }
-
-        if (string.IsNullOrEmpty(workFlowInput.Name) || workFlowInput.SourceBlobStorageInfo == null ||
-            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.BlobName) ||
-            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.ContainerName))
+        else
         {
-            log.LogError("Missing required details in WorkFlowInput or BlobStorageInfo.");
-            orchestrationResults.Add("Missing required details in WorkFlowInput or BlobStorageInfo.");
-            return orchestrationResults; // Exit the orchestration due to missing required details
+            orchestrationResults.Add("WorkFlowInput is valid.");
+            log.LogInformation("WorkFlowInput is valid.");
         }
 
         // Step 1: Retrieve the secret value
         try
         {
-            var secretName = workFlowInput.Name;
+            var secretName = workFlowInput!.Name;
             var secretValue = await context.CallActivityAsync<string>(nameof(KeyVaultActivities.GetSecretFromKeyVault), secretName);
             orchestrationResults.Add($"Successfully retrieved secret: {secretName}");
-
+            if (string.IsNullOrEmpty(secretValue))
+            {
+                log.LogError("Secret value is null or empty.");
+                orchestrationResults.Add($"Error: Secret value is null or empty.");
+                return orchestrationResults;
+            }
             // Update BlobStorageInfo with the secret value
-            workFlowInput.SourceBlobStorageInfo.Content = secretValue;
+            workFlowInput!.TargetBlobStorageInfo!.Content = secretValue;
 
             // Step 2: Write the secret value to blob storage
-            await context.CallActivityAsync(nameof(BlobStorageActivities.WriteStringToBlob), workFlowInput.SourceBlobStorageInfo);
+            await context.CallActivityAsync(nameof(BlobStorageActivities.WriteStringToBlob), workFlowInput.TargetBlobStorageInfo);
             orchestrationResults.Add($"Successfully stored secret '{secretName}' in blob storage.");
         }
         catch (System.Exception ex)
@@ -77,13 +80,10 @@ public class WorkflowOrc
         {
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
-
-        var input = JsonSerializer.Deserialize<WorkFlowInput>(requestBody) ??
-                    throw new ArgumentException("The request body is not a valid WorkFlowInput.", nameof(req));
+        var input = ExtractInput(requestBody);
 
         // Function input comes from the request content.
-        var instanceId =
-            await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
+        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

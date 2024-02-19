@@ -1,6 +1,4 @@
 using System.Text;
-using Azure.Identity;
-using Azure.Storage.Blobs;
 using DurableOrchestrator.Observability;
 using OpenTelemetry.Trace;
 using DurableOrchestrator.Storage;
@@ -19,9 +17,6 @@ public class BlobStorageActivities
         _blobServiceClientsWrapper = blobServiceClientsWrapper;
         _log = log;
     }
-
-        // var sourceBlobClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient("sourceContainer").GetBlobClient("sourceBlobName");
-        // var targetBlobClient = _blobServiceClientsWrapper.TargetClient.GetBlobContainerClient("targetContainer").GetBlobClient("targetBlobName");
 
     [Function(nameof(GetBlobContentAsString))]
     public async Task<string?> GetBlobContentAsString([ActivityTrigger] BlobStorageInfo input,
@@ -96,7 +91,6 @@ public class BlobStorageActivities
         {
             var blobClient = _blobServiceClientsWrapper.TargetClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
 
-
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);
             _log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
@@ -139,39 +133,7 @@ public class BlobStorageActivities
             span.RecordException(ex);
         }
     }
-
-    // private BlobClient GetBlobClient(BlobStorageInfo input, ILogger logger)
-    // {
-    //     try
-    //     {
-    //         BlobClient blobClient;
-    //         if (string.IsNullOrWhiteSpace(input.BlobUri))
-    //         {
-    //             if (string.IsNullOrWhiteSpace(input.ContainerName) || string.IsNullOrWhiteSpace(input.BlobName))
-    //             {
-    //                 logger.LogError("Container name or blob name is not provided, and no BlobUri is specified.");
-    //                 throw new ArgumentException(
-    //                     "Container name or blob name is not provided, and no BlobUri is specified.");
-    //             }
-
-    //             var blobContainerClient = blobServiceClient.GetBlobContainerClient(input.ContainerName);
-    //             blobContainerClient.CreateIfNotExists();
-    //             blobClient = blobContainerClient.GetBlobClient(input.BlobName);
-    //         }
-    //         else
-    //         {
-    //             blobClient = new BlobClient(new Uri(input.BlobUri), new DefaultAzureCredential());
-    //         }
-
-    //         return blobClient;
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         logger.LogError("Failed to create BlobClient: {Message}", ex.Message);
-    //         throw;
-    //     }
-    // }
-
+    
     private static bool ValidateInput(BlobStorageInfo input, ILogger log, bool checkContent = true)
     {
         if (!checkContent || !string.IsNullOrWhiteSpace(input.Content))

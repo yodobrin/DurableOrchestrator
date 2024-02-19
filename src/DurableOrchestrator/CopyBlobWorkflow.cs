@@ -4,9 +4,10 @@ using OpenTelemetry.Trace;
 namespace DurableOrchestrator;
 
 [ActivitySource(nameof(CopyBlobWorkflow))]
-public class CopyBlobWorkflow
+public class CopyBlobWorkflow : BaseWorkflow
 {
     private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(CopyBlobWorkflow));
+    public CopyBlobWorkflow() : base(nameof(CopyBlobWorkflow)) { }
     private const string OrchestrationName = "CopyBlobWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
     [Function("CopyBlobWorkflow")]
@@ -20,21 +21,28 @@ public class CopyBlobWorkflow
         // step 1: obtain input for the workflow
  
         var workFlowInput = context.GetInput<WorkFlowInput>();
+
         // step 2: validate the input
-        if (workFlowInput == null)
+        ValidationResult validationResult = ValidateWorkFlowInputs(workFlowInput!);
+        if (!validationResult.IsValid)
         {
-            log.LogError("WorkFlowInput is null.");
-            orchestrationResults.Add("Workflow input was not provided.");
-            return orchestrationResults; // Exit the orchestration due to missing WorkFlowInput
+            orchestrationResults.AddRange(validationResult.Errors);
+            return orchestrationResults; // Exit the orchestration due to validation errors
         }
-        if (!ValidateWorkFlowInput(workFlowInput, log))
+        else
         {
-            orchestrationResults.Add("Missing required details in WorkFlowInput or BlobStorageInfo.");
-            return orchestrationResults; // Exit the orchestration due to missing required details
+            orchestrationResults.Add("WorkFlowInput is valid.");
         }
         // step 3: get blob content to be copied
-        var blobContent = await context.CallActivityAsync<byte[]>("GetBlobContentAsBuffer", workFlowInput.SourceBlobStorageInfo);
-        log.LogInformation($"Retrieved blob content size: {blobContent?.Length ?? 0} bytes.");        
+        var blobContent = await context.CallActivityAsync<byte[]>("GetBlobContentAsBuffer", workFlowInput!.SourceBlobStorageInfo);
+        log.LogInformation($"Retrieved blob content size: {blobContent?.Length ?? 0} bytes.");
+
+        if(blobContent == null || blobContent.Length == 0)
+        {
+            log.LogError("Blob content is empty or null.");
+            orchestrationResults.Add("Blob content is empty or null.");
+            return orchestrationResults; // Exit the orchestration due to missing blob content
+        }
 
         // step 4: write to another blob
         workFlowInput.SourceBlobStorageInfo!.Buffer = blobContent;
@@ -42,17 +50,6 @@ public class CopyBlobWorkflow
         return orchestrationResults;
     }
 
-    static bool ValidateWorkFlowInput(WorkFlowInput workFlowInput, ILogger log)
-    {
-        if (string.IsNullOrEmpty(workFlowInput.Name) || workFlowInput.SourceBlobStorageInfo == null ||
-            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.BlobName) || 
-            string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.ContainerName))
-        {
-            log.LogError("Missing required details in WorkFlowInput or BlobStorageInfo.");
-            return false;
-        }
-        return true;
-    }
 
     [Function(OrchestrationTriggerName)]
     public async Task<HttpResponseData> HttpStart(
@@ -67,13 +64,13 @@ public class CopyBlobWorkflow
 
         var requestBody = await req.ReadAsStringAsync();
         // Check for an empty request body as a more direct approach
+        
         if (string.IsNullOrEmpty(requestBody))
         {
              throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         } 
+        var input = ExtractInput(requestBody);
 
-        var input = JsonSerializer.Deserialize<WorkFlowInput>(requestBody) ??
-                    throw new ArgumentException("The request body is not a valid WorkFlowInput.", nameof(req));
         // Function input comes from the request content.
         string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("CopyBlobWorkflow", input);
 
