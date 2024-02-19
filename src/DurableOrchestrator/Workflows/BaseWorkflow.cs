@@ -1,7 +1,7 @@
 using OpenTelemetry.Trace;
-using DurableOrchestrator.Storage;
+using DurableOrchestrator.Models;
 
-namespace DurableOrchestrator;
+namespace DurableOrchestrator.Workflows;
 
 public abstract class BaseWorkflow
 {
@@ -13,37 +13,13 @@ public abstract class BaseWorkflow
     }
 
    
-    protected static bool ValidateWorkFlowInput(WorkFlowInput workFlowInput)
-    {
-        // Implement validation logic here
-        // This is a simplified example, extend according to your needs
-        return !string.IsNullOrEmpty(workFlowInput?.Name) &&
-               workFlowInput.SourceBlobStorageInfo != null &&
-               !string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.BlobName) &&
-               !string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.ContainerName) &&
-               !string.IsNullOrEmpty(workFlowInput.SourceBlobStorageInfo.StorageAccountName) &&
-               workFlowInput.TargetBlobStorageInfo != null &&
-               !string.IsNullOrEmpty(workFlowInput.TargetBlobStorageInfo.BlobName) &&
-               !string.IsNullOrEmpty(workFlowInput.TargetBlobStorageInfo.ContainerName) &&
-               !string.IsNullOrEmpty(workFlowInput.TargetBlobStorageInfo.StorageAccountName);
-               
-    }
-    // protected static ExtractAndValidateResult ExtractAndValidateInput(WorkFlowInput workFlowInput)
-    // {
-    //     // Validate the extracted WorkFlowInput
-    //     var validationResult = ValidateWorkFlowInputs(workFlowInput);
-
-    //     // Return both the WorkFlowInput and ValidationResult
-    //     return new ExtractAndValidateResult(workFlowInput, validationResult);
-    // }
-
     protected static ValidationResult ValidateWorkFlowInputs(WorkFlowInput workFlowInput)
     {
         var result = new ValidationResult { IsValid = true };
 
         if(workFlowInput == null)
         {
-            result.AddError("WorkFlowInput is null. No addtional checks where performed.");
+            result.AddError("WorkFlowInput is null. No additional checks where performed.");
             return result;
         }
             
@@ -81,12 +57,10 @@ public abstract class BaseWorkflow
         return result;
     }
 
-
     protected static WorkFlowInput ExtractInput(string requestBody)
     {
         var workFlowInput = JsonSerializer.Deserialize<WorkFlowInput>(requestBody) ??
                     throw new ArgumentException("The request body is not a valid WorkFlowInput.", nameof(requestBody));
         return workFlowInput;
     }
-    // protected abstract Task<List<string>> ExecuteWorkflowSteps(WorkFlowInput workFlowInput, TaskOrchestrationContext context);
 }

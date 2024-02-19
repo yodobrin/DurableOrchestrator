@@ -2,7 +2,7 @@ using Azure.Security.KeyVault.Secrets;
 using DurableOrchestrator.Observability;
 using OpenTelemetry.Trace;
 
-namespace DurableOrchestrator;
+namespace DurableOrchestrator.KeyVault;
 
 [ActivitySource(nameof(KeyVaultActivities))]
 public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities> log)

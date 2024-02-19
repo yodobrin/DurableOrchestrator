@@ -1,9 +1,9 @@
 using System.Text;
 using DurableOrchestrator.Observability;
 using OpenTelemetry.Trace;
-using DurableOrchestrator.Storage;
+using DurableOrchestrator.Models;
 
-namespace DurableOrchestrator;
+namespace DurableOrchestrator.Storage;
 
 [ActivitySource(nameof(BlobStorageActivities))]
 public class BlobStorageActivities
@@ -122,7 +122,7 @@ public class BlobStorageActivities
 
             using var stream = new MemoryStream(input.Buffer);
             await blobClient.UploadAsync(stream, overwrite: true);
-            _log.LogInformation("Successfully uploaded buffer to blob: {BlobName} in container: {ContainerName}",
+            _log.LogInformation($"Successfully uploaded buffer to blob: {input.BlobName} in container: {input.ContainerName}",
                 input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
