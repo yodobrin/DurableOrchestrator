@@ -12,7 +12,7 @@ POST http://localhost:7071/api/WorkflowOrc_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "whatasecret2.txt",
+    "blobName": "whatasecret3.txt",
     "containerName": "targetcontainer"
   }
 }
@@ -32,7 +32,7 @@ POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "copy_3of_functions.csv",
+    "blobName": "copy_1of_functions.csv",
     "containerName": "targetcontainer"
   }
 }

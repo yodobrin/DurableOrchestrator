@@ -1,7 +1,8 @@
 using DurableOrchestrator.Observability;
+using DurableOrchestrator.Models;
 using OpenTelemetry.Trace;
 
-namespace DurableOrchestrator;
+namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(CopyBlobWorkflow))]
 public class CopyBlobWorkflow : BaseWorkflow
@@ -19,7 +20,6 @@ public class CopyBlobWorkflow : BaseWorkflow
         var log = context.CreateReplaySafeLogger(OrchestrationName);
         var orchestrationResults = new List<string>();
         // step 1: obtain input for the workflow
- 
         var workFlowInput = context.GetInput<WorkFlowInput>();
 
         // step 2: validate the input
@@ -31,25 +31,24 @@ public class CopyBlobWorkflow : BaseWorkflow
         }
         else
         {
-            orchestrationResults.Add("WorkFlowInput is valid.");
+            orchestrationResults.Add("CopyBlobWorkflow::WorkFlowInput is valid.");
         }
         // step 3: get blob content to be copied
         var blobContent = await context.CallActivityAsync<byte[]>("GetBlobContentAsBuffer", workFlowInput!.SourceBlobStorageInfo);
-        log.LogInformation($"Retrieved blob content size: {blobContent?.Length ?? 0} bytes.");
+        log.LogInformation($"CopyBlobWorkflow::Retrieved blob content size: {blobContent?.Length ?? 0} bytes.");
 
         if(blobContent == null || blobContent.Length == 0)
         {
-            log.LogError("Blob content is empty or null.");
+            log.LogError("CopyBlobWorkflow::Blob content is empty or null.");
             orchestrationResults.Add("Blob content is empty or null.");
             return orchestrationResults; // Exit the orchestration due to missing blob content
         }
-
+        BlobStorageInfo targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
         // step 4: write to another blob
-        workFlowInput.SourceBlobStorageInfo!.Buffer = blobContent;
-        await context.CallActivityAsync<string>("WriteBufferToBlob",workFlowInput.TargetBlobStorageInfo);
+        targetBlobStorageInfo.Buffer = blobContent;
+        await context.CallActivityAsync<string>("WriteBufferToBlob",targetBlobStorageInfo);
         return orchestrationResults;
     }
-
 
     [Function(OrchestrationTriggerName)]
     public async Task<HttpResponseData> HttpStart(

@@ -1,7 +1,10 @@
 using DurableOrchestrator.Observability;
+using DurableOrchestrator.Models;
+using DurableOrchestrator.Storage;
+using DurableOrchestrator.KeyVault;
 using OpenTelemetry.Trace;
 
-namespace DurableOrchestrator;
+namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(WorkflowOrc))]
 public class WorkflowOrc : BaseWorkflow
