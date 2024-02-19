@@ -102,6 +102,11 @@ module applicationInsights './management_governance/application-insights.bicep' 
   }
 }
 
+resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.storageBlobDataContributor
+}
+
 module storageAccount './storage/storage-account.bicep' = {
   name: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageAccount}${resourceToken}'
   scope: resourceGroup
@@ -117,6 +122,12 @@ module storageAccount './storage/storage-account.bicep' = {
       primaryKeySecretName: 'StorageAccountPrimaryKey'
       connectionStringSecretName: 'StorageAccountConnectionString'
     }
+    roleAssignments: [
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageBlobDataContributor.id
+      }
+    ]
   }
 }
 
@@ -133,9 +144,9 @@ module appServicePlan './compute/app-service-plan.bicep' = {
     location: location
     tags: union(tags, {})
     sku: {
-      name: 'Y1'
+      tier: 'PremiumV3'
+      name: 'P0V3'
     }
-    kind: 'functionapp'
   }
 }
 
@@ -163,8 +174,24 @@ module functionApp './compute/function-app.bicep' = {
     appServicePlanId: appServicePlan.outputs.id
     appSettings: concat([
         {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: applicationInsights.outputs.instrumentationKey
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://ghcr.io'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+          value: ''
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+          value: null
+        }
+        {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'false'
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -175,20 +202,16 @@ module functionApp './compute/function-app.bicep' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.outputs.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
         }
         {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'dotnet-isolated'
-        }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '1'
-        }
-        {
           name: 'KEY_VAULT_URI'
           value: keyVault.outputs.uri
+        }
+        {
+          name: 'BlobSourceStorageAccountName'
+          value: storageAccount.outputs.name
+        }
+        {
+          name: 'BlobTargetStorageAccountName'
+          value: storageAccount.outputs.name
         }
       ], functionAppSettings.outputs.environmentVariables)
   }

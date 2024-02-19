@@ -9,18 +9,18 @@ param tags object = {}
 param appServicePlanId string
 @description('App settings for the Function App.')
 param appSettings array = []
-@description('Whether the Function App is Linux-based. Defaults to true.')
-param isLinux bool = true
 @description('ID for the Managed Identity associated with the Function App.')
 param functionAppIdentityId string
-
-var kind = isLinux ? 'functionapp,linux' : 'functionapp'
+@description('Version of the runtime to use for the Function App. Defaults to .NET 8.0 Isolated.')
+param linuxFxVersion string = 'DOTNET-ISOLATED|8.0'
+@description('Public network access for the Function App. Defaults to Enabled.')
+param publicNetworkAccess string = 'Enabled'
 
 resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
     name: name
     location: location
     tags: tags
-    kind: kind
+    kind: 'functionapp,linux'
     identity: {
         type: 'UserAssigned'
         userAssignedIdentities: {
@@ -31,8 +31,12 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
         serverFarmId: appServicePlanId
         siteConfig: {
             appSettings: appSettings
+            linuxFxVersion: linuxFxVersion
+            alwaysOn: true
         }
         keyVaultReferenceIdentity: functionAppIdentityId
+        httpsOnly: true
+        publicNetworkAccess: publicNetworkAccess
     }
 }
 
