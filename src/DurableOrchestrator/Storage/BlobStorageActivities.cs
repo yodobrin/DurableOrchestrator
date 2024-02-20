@@ -32,12 +32,15 @@ public class BlobStorageActivities
 
         if (!ValidateInput(input, _log, checkContent: false))
         {
-            return null;
+            throw new ArgumentException("Invalid input", nameof(input));
         }
 
         try
-        {            
-            var blobClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
+        {
+            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            await blobContainerClient.CreateIfNotExistsAsync();
+
+            var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             var downloadResult = await blobClient.DownloadContentAsync();
             return downloadResult.Value.Content.ToString();
@@ -49,7 +52,7 @@ public class BlobStorageActivities
             span.SetStatus(Status.Error);
             span.RecordException(ex);
 
-            return null;
+            throw;
         }
     }
 
@@ -67,13 +70,18 @@ public class BlobStorageActivities
 
         if (!ValidateInput(input, _log, checkContent: false))
         {
-            return null;
+            throw new ArgumentException("Invalid input", nameof(input));
         }
 
         try
         {
             _log.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
-            var blobClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
+
+            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            await blobContainerClient.CreateIfNotExistsAsync();
+
+            var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
+
             using var memoryStream = new MemoryStream();
             await blobClient.DownloadToAsync(memoryStream);
             return memoryStream.ToArray();
@@ -85,7 +93,7 @@ public class BlobStorageActivities
             span.SetStatus(Status.Error);
             span.RecordException(ex);
 
-            return null;
+            throw;
         }
     }
 
