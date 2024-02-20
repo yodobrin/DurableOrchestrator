@@ -1,5 +1,4 @@
 using Azure.AI.TextAnalytics;
-// using System.Text;
 using DurableOrchestrator.Observability;
 using OpenTelemetry.Trace;
 using DurableOrchestrator.Models;
@@ -34,7 +33,8 @@ public class TextAnalyticsActivities
 
         if (!ValidateInput(input, _log))
         {
-            return null;
+            // throw an exception to indicate that the input is invalid
+            throw new ArgumentException("GetSentiment::Input is invalid.");
         }
 
         try
@@ -49,7 +49,7 @@ public class TextAnalyticsActivities
             span.SetStatus(Status.Error);
             span.RecordException(ex);
 
-            return null;
+            throw;
         }
     }
 
