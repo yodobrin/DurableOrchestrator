@@ -201,20 +201,12 @@ module functionApp './compute/function-app.bicep' = {
           value: '~4'
         }
         {
-          name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://ghcr.io'
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'dotnet-isolated'
         }
         {
-          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-          value: ''
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-          value: null
-        }
-        {
-          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-          value: 'false'
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
