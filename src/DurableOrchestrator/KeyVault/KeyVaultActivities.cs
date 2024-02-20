@@ -12,6 +12,13 @@ public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities>
     private const string DefaultSecretValue = "N/A";
 
     [Function(nameof(GetSecretFromKeyVault))]
+    /// <summary>
+    /// Retrieves a single secret from Azure Key Vault. If the secret is not found, a default value is returned. This method logs the outcome of the operation and handles exceptions by logging them and rethrowing.
+    /// </summary>
+    /// <param name="secretName">The name of the secret to retrieve.</param>
+    /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
+    /// <returns>The value of the secret, or a default value if the secret is not found.</returns>
+    /// <exception cref="ArgumentException">Thrown when the secret name is null or whitespace.</exception>
     public async Task<string> GetSecretFromKeyVault([ActivityTrigger] string secretName, FunctionContext executionContext)
     {
         using var span = _tracer.StartActiveSpan(nameof(GetSecretFromKeyVault));
@@ -44,6 +51,12 @@ public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities>
     }
 
     [Function(nameof(GetMultipleSecretsFromKeyVault))]
+    /// <summary>
+    /// Retrieves multiple secrets from Azure Key Vault based on a list of secret names. Each secret's retrieval is attempted, and if not found, a default value is returned for it. The method logs the outcome of each attempt.
+    /// </summary>
+    /// <param name="secretNames">A list of secret names to retrieve.</param>
+    /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
+    /// <returns>A list containing the values of the retrieved secrets, or default values for those not found.</returns>
     public async Task<List<string>> GetMultipleSecretsFromKeyVault([ActivityTrigger] List<string> secretNames, FunctionContext executionContext)
     {
         using var span = _tracer.StartActiveSpan(nameof(GetMultipleSecretsFromKeyVault));

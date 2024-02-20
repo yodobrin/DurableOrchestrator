@@ -12,6 +12,11 @@ public class CopyBlobWorkflow : BaseWorkflow
     private const string OrchestrationName = "CopyBlobWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
     [Function("CopyBlobWorkflow")]
+    /// <summary>
+    /// Orchestrates the process of copying content from a source blob to a target blob. It involves validating the workflow input, retrieving the content of the source blob, and writing that content to the target blob.
+    /// </summary>
+    /// <param name="context">The orchestration context providing access to workflow-related methods and properties.</param>
+    /// <returns>A list of strings representing the orchestration results, which could include validation errors, informational messages, or a success message indicating the completion of the copy operation.</returns>
     public async Task<List<string>> RunOrchestrator(
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
@@ -51,6 +56,13 @@ public class CopyBlobWorkflow : BaseWorkflow
     }
 
     [Function(OrchestrationTriggerName)]
+    /// <summary>
+    /// HTTP-triggered function that starts the blob copy orchestration. It extracts input from the HTTP request body, schedules a new orchestration instance for the copy operation, and returns a response with the status check URL.
+    /// </summary>
+    /// <param name="req">The HTTP request containing the input for the copy blob workflow.</param>
+    /// <param name="starter">The durable task client used to schedule new orchestration instances.</param>
+    /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
+    /// <returns>A response with the HTTP status code and the URL to check the orchestration status.</returns>
     public async Task<HttpResponseData> HttpStart(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")]
         HttpRequestData req,
