@@ -38,7 +38,7 @@ public class BlobStorageActivities
         try
         {
             var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
-            await blobContainerClient.CreateIfNotExistsAsync();
+            // await blobContainerClient.CreateIfNotExistsAsync();
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
@@ -78,7 +78,7 @@ public class BlobStorageActivities
             _log.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
 
             var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
-            await blobContainerClient.CreateIfNotExistsAsync();
+            // await blobContainerClient.CreateIfNotExistsAsync();
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
@@ -114,7 +114,11 @@ public class BlobStorageActivities
 
         try
         {
-            var blobClient = _blobServiceClientsWrapper.TargetClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
+            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            // verify the container exists
+            await blobContainerClient.CreateIfNotExistsAsync();
+            var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
+            // var blobClient = _blobServiceClientsWrapper.TargetClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);
@@ -148,7 +152,10 @@ public class BlobStorageActivities
         try
         {
             _log.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
-            var blobClient = _blobServiceClientsWrapper.TargetClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
+            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            // verify the container exists
+            await blobContainerClient.CreateIfNotExistsAsync();
+            var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(input.Buffer);
             await blobClient.UploadAsync(stream, overwrite: true);
