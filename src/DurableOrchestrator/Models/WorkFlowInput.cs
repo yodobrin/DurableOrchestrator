@@ -1,8 +1,7 @@
 namespace DurableOrchestrator.Models;
 
-public class WorkFlowInput
+public class WorkFlowInput : IObservableContext
 {
-
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
@@ -14,10 +13,13 @@ public class WorkFlowInput
 
     [JsonPropertyName("sourceBlobStorageInfo")]
     public BlobStorageInfo? SourceBlobStorageInfo { get; set; }
-    
+
     [JsonPropertyName("targetBlobStorageInfo")]
     public BlobStorageInfo? TargetBlobStorageInfo { get; set; }
 
     [JsonPropertyName("textAnalyticsRequests")]
-    public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new List<TextAnalyticsRequest>();
+    public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new();
+
+    [JsonPropertyName("observableProperties")]
+    public Dictionary<string, object> ObservableProperties { get; set; } = new();
 }

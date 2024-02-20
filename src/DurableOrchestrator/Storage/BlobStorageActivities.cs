@@ -1,43 +1,38 @@
 using System.Text;
-using DurableOrchestrator.Observability;
-using OpenTelemetry.Trace;
+using DurableOrchestrator.Activities;
 using DurableOrchestrator.Models;
+using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.Storage;
 
 [ActivitySource(nameof(BlobStorageActivities))]
-public class BlobStorageActivities
+public class BlobStorageActivities(
+    BlobServiceClientsWrapper blobServiceClientsWrapper,
+    ILogger<BlobStorageActivities> log)
+    : BaseActivity(nameof(BlobStorageActivities))
 {
-    private readonly BlobServiceClientsWrapper _blobServiceClientsWrapper;
-    private readonly ILogger<BlobStorageActivities> _log;
-    private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(BlobStorageActivities));
-
-    public BlobStorageActivities(BlobServiceClientsWrapper blobServiceClientsWrapper, ILogger<BlobStorageActivities> log)
-    {
-        _blobServiceClientsWrapper = blobServiceClientsWrapper;
-        _log = log;
-    }
-
-    [Function(nameof(GetBlobContentAsString))]
     /// <summary>
     /// Retrieves the content of a blob as a string. Validates the input before attempting to read the blob's content.
     /// </summary>
     /// <param name="input">Blob storage information including container and blob names.</param>
     /// <param name="executionContext">Function execution context for logging and telemetry.</param>
     /// <returns>The content of the specified blob as a string, or null if the operation fails.</returns>
-    public async Task<string?> GetBlobContentAsString([ActivityTrigger] BlobStorageInfo input,
+    [Function(nameof(GetBlobContentAsString))]
+    public async Task<string?> GetBlobContentAsString(
+        [ActivityTrigger] BlobStorageInfo input,
         FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(GetBlobContentAsString));
+        using var span = StartActiveSpan(nameof(GetBlobContentAsString), input);
 
-        if (!ValidateInput(input, _log, checkContent: false))
+        if (!ValidateInput(input, log, checkContent: false))
         {
             throw new ArgumentException("Invalid input", nameof(input));
         }
 
         try
         {
-            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            var blobContainerClient =
+                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
             // await blobContainerClient.CreateIfNotExistsAsync();
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
@@ -47,7 +42,7 @@ public class BlobStorageActivities
         }
         catch (Exception ex)
         {
-            _log.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
+            log.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -56,28 +51,30 @@ public class BlobStorageActivities
         }
     }
 
-    [Function(nameof(GetBlobContentAsBuffer))]
     /// <summary>
     /// Retrieves the content of a blob as a byte array. Validates the input before attempting to read the blob's content.
     /// </summary>
     /// <param name="input">Blob storage information including container and blob names.</param>
     /// <param name="executionContext">Function execution context for logging and telemetry.</param>
     /// <returns>The content of the specified blob as a byte array, or null if the operation fails.</returns>
-    public async Task<byte[]?> GetBlobContentAsBuffer([ActivityTrigger] BlobStorageInfo input,
+    [Function(nameof(GetBlobContentAsBuffer))]
+    public async Task<byte[]?> GetBlobContentAsBuffer(
+        [ActivityTrigger] BlobStorageInfo input,
         FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(GetBlobContentAsBuffer));
+        using var span = StartActiveSpan(nameof(GetBlobContentAsBuffer), input);
 
-        if (!ValidateInput(input, _log, checkContent: false))
+        if (!ValidateInput(input, log, checkContent: false))
         {
             throw new ArgumentException("Invalid input", nameof(input));
         }
 
         try
         {
-            _log.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
+            log.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
 
-            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            var blobContainerClient =
+                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
             // await blobContainerClient.CreateIfNotExistsAsync();
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
@@ -88,7 +85,7 @@ public class BlobStorageActivities
         }
         catch (Exception ex)
         {
-            _log.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
+            log.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -97,24 +94,25 @@ public class BlobStorageActivities
         }
     }
 
-    [Function(nameof(WriteStringToBlob))]
     /// <summary>
     /// Writes a string to a blob. Validates the input before writing the content to the blob.
     /// </summary>
     /// <param name="input">Blob storage information including container and blob names, along with the content to write.</param>
     /// <param name="executionContext">Function execution context for logging and telemetry.</param>
+    [Function(nameof(WriteStringToBlob))]
     public async Task WriteStringToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(WriteStringToBlob));
+        using var span = StartActiveSpan(nameof(WriteStringToBlob), input);
 
-        if (!ValidateInput(input, _log))
+        if (!ValidateInput(input, log))
         {
             return;
         }
 
         try
         {
-            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            var blobContainerClient =
+                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
@@ -122,54 +120,57 @@ public class BlobStorageActivities
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);
-            _log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
+            log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
                 input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
-            _log.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
+            log.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
         }
     }
 
-    [Function(nameof(WriteBufferToBlob))]
     /// <summary>
     /// Writes a byte array to a blob. Validates the input before writing the buffer to the blob.
     /// </summary>
     /// <param name="input">Blob storage information including container and blob names, along with the buffer to write.</param>
     /// <param name="executionContext">Function execution context for logging and telemetry.</param>
+    [Function(nameof(WriteBufferToBlob))]
     public async Task WriteBufferToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(WriteStringToBlob));
+        using var span = StartActiveSpan(nameof(WriteStringToBlob), input);
 
-        if (!ValidateInput(input, _log, checkContent: false))
+        if (!ValidateInput(input, log, checkContent: false))
         {
             return;
         }
 
         try
         {
-            _log.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
-            var blobContainerClient = _blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+            log.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
+            var blobContainerClient =
+                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(input.Buffer);
             await blobClient.UploadAsync(stream, overwrite: true);
-            _log.LogInformation($"Successfully uploaded buffer to blob: {input.BlobName} in container: {input.ContainerName}",
+            log.LogInformation(
+                $"Successfully uploaded buffer to blob: {input.BlobName} in container: {input.ContainerName}",
                 input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
-            _log.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
+            log.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
         }
     }
+
     /// <summary>
     /// Validates the blob storage input, optionally checking if the content is not null or whitespace when required.
     /// </summary>

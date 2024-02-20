@@ -1,27 +1,30 @@
 using Azure.Security.KeyVault.Secrets;
+using DurableOrchestrator.Activities;
+using DurableOrchestrator.Models;
 using DurableOrchestrator.Observability;
-using OpenTelemetry.Trace;
 
 namespace DurableOrchestrator.KeyVault;
 
 [ActivitySource(nameof(KeyVaultActivities))]
-public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities> log)
+public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities> log) : BaseActivity(nameof(KeyVaultActivities))
 {
-    private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(KeyVaultActivities));
-
     private const string DefaultSecretValue = "N/A";
 
-    [Function(nameof(GetSecretFromKeyVault))]
     /// <summary>
     /// Retrieves a single secret from Azure Key Vault. If the secret is not found, a default value is returned. This method logs the outcome of the operation and handles exceptions by logging them and rethrowing.
     /// </summary>
-    /// <param name="secretName">The name of the secret to retrieve.</param>
+    /// <param name="input">The activity input containing the name of the secret to retrieve.</param>
     /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
     /// <returns>The value of the secret, or a default value if the secret is not found.</returns>
     /// <exception cref="ArgumentException">Thrown when the secret name is null or whitespace.</exception>
-    public async Task<string> GetSecretFromKeyVault([ActivityTrigger] string secretName, FunctionContext executionContext)
+    [Function(nameof(GetSecretFromKeyVault))]
+    public async Task<string> GetSecretFromKeyVault(
+        [ActivityTrigger] KeyVaultRequest input,
+        FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(GetSecretFromKeyVault));
+        using var span = StartActiveSpan(nameof(GetSecretFromKeyVault), input);
+
+        var secretName = input.SecretName;
 
         if (string.IsNullOrWhiteSpace(secretName))
         {
@@ -50,17 +53,20 @@ public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities>
         }
     }
 
-    [Function(nameof(GetMultipleSecretsFromKeyVault))]
     /// <summary>
     /// Retrieves multiple secrets from Azure Key Vault based on a list of secret names. Each secret's retrieval is attempted, and if not found, a default value is returned for it. The method logs the outcome of each attempt.
     /// </summary>
-    /// <param name="secretNames">A list of secret names to retrieve.</param>
+    /// <param name="input">The activity input containing a list of secret names to retrieve.</param>
     /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
     /// <returns>A list containing the values of the retrieved secrets, or default values for those not found.</returns>
-    public async Task<List<string>> GetMultipleSecretsFromKeyVault([ActivityTrigger] List<string> secretNames, FunctionContext executionContext)
+    [Function(nameof(GetMultipleSecretsFromKeyVault))]
+    public async Task<List<string>> GetMultipleSecretsFromKeyVault(
+        [ActivityTrigger] KeyVaultRequest input,
+        FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(GetMultipleSecretsFromKeyVault));
+        using var span = StartActiveSpan(nameof(GetMultipleSecretsFromKeyVault), input);
 
+        var secretNames = input.SecretNames ?? throw new ArgumentException("Secret names must not be null.");
         var secretsValues = new List<string>();
 
         foreach (var secretName in secretNames)
