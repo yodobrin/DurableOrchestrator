@@ -12,11 +12,29 @@ POST http://localhost:7071/api/WorkflowOrc_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "whatasecret3.txt",
+    "blobName": "whatasecret32.txt",
     "containerName": "targetcontainer"
   }
 }
 
+###
+POST http://localhost:7071/api/WorkflowOrc_HttpStart
+
+{
+  "name": "samplesec",
+  "source": "sourceIdentifier",
+  "destination": "destinationIdentifier",
+  "sourceBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "asecret2.csv",
+    "containerName": "sourcecontainer"
+  },
+  "targetBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "copy_11of_functions.csv",
+    "containerName": "targetcontainer"
+  }
+}
 ###
 
 POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
@@ -32,9 +50,9 @@ POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "copy_1of_functions.csv",
+    "blobName": "copy_12of_functions.csv",
     "containerName": "targetcontainer"
-  }
+  }  
 }
 
 ###
@@ -51,7 +69,7 @@ POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "sentiments1.json",
+    "blobName": "sentiments22.json",
     "containerName": "targetcontainer"
   },
   "textAnalyticsRequests": [

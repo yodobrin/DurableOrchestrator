@@ -32,7 +32,8 @@ public class TextAnalyticsWorkflow : BaseWorkflow
         ValidationResult validationResult = ValidateWorkFlowInputs(workFlowInput!);
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult.Errors); // some of the 'errors' are not really errors, but just informational messages
+            log.LogError($"BatchExtractSentiment::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
         else

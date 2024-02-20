@@ -31,7 +31,8 @@ public class CopyBlobWorkflow : BaseWorkflow
         ValidationResult validationResult = ValidateWorkFlowInputs(workFlowInput!);
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult.Errors);
+            log.LogError($"CopyBlobWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            orchestrationResults.AddRange(validationResult.ValidationMessages);
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
         else

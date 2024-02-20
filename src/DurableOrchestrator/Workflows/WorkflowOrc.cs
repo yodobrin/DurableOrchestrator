@@ -27,14 +27,14 @@ public class WorkflowOrc : BaseWorkflow
         ValidationResult validationResult = ValidateWorkFlowInputs(workFlowInput!);
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult.Errors);
-            log.LogError("WorkFlowInput is invalid.");
+            orchestrationResults.AddRange(validationResult.ValidationMessages);
+            log.LogError($"WorkflowOrc::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
         else
         {
             orchestrationResults.Add("WorkFlowInput is valid.");
-            log.LogInformation("WorkFlowInput is valid.");
+            log.LogInformation("WorkflowOrc::WorkFlowInput is valid.");
         }
 
         // Step 1: Retrieve the secret value
