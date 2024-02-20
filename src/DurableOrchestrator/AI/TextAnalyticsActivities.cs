@@ -20,6 +20,13 @@ public class TextAnalyticsActivities
     }
 
     [Function(nameof(GetSentiment))]
+    /// <summary>
+    /// Analyzes the sentiment of the provided text using Azure AI Text Analytics.
+    /// </summary>
+    /// <param name="input">The text analytics request containing the text to analyze.</param>
+    /// <param name="executionContext">The function execution context.</param>
+    /// <returns>The sentiment analysis result as a string, or null if an error occurs.</returns>
+
     public async Task<string?> GetSentiment([ActivityTrigger] TextAnalyticsRequest input,
         FunctionContext executionContext)
     {
@@ -45,6 +52,13 @@ public class TextAnalyticsActivities
             return null;
         }
     }
+
+    /// <summary>
+    /// Validates the input for the text analytics request.
+    /// </summary>
+    /// <param name="input">The text analytics request to validate.</param>
+    /// <param name="log">The logger instance for logging validation errors.</param>
+    /// <returns>true if the input is valid; otherwise, false.</returns>
     static bool ValidateInput(TextAnalyticsRequest input, ILogger<TextAnalyticsActivities> log)
     {
         if (input == null)

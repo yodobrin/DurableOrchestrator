@@ -19,6 +19,12 @@ public class BlobStorageActivities
     }
 
     [Function(nameof(GetBlobContentAsString))]
+    /// <summary>
+    /// Retrieves the content of a blob as a string. Validates the input before attempting to read the blob's content.
+    /// </summary>
+    /// <param name="input">Blob storage information including container and blob names.</param>
+    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
+    /// <returns>The content of the specified blob as a string, or null if the operation fails.</returns>
     public async Task<string?> GetBlobContentAsString([ActivityTrigger] BlobStorageInfo input,
         FunctionContext executionContext)
     {
@@ -48,6 +54,12 @@ public class BlobStorageActivities
     }
 
     [Function(nameof(GetBlobContentAsBuffer))]
+    /// <summary>
+    /// Retrieves the content of a blob as a byte array. Validates the input before attempting to read the blob's content.
+    /// </summary>
+    /// <param name="input">Blob storage information including container and blob names.</param>
+    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
+    /// <returns>The content of the specified blob as a byte array, or null if the operation fails.</returns>
     public async Task<byte[]?> GetBlobContentAsBuffer([ActivityTrigger] BlobStorageInfo input,
         FunctionContext executionContext)
     {
@@ -78,6 +90,11 @@ public class BlobStorageActivities
     }
 
     [Function(nameof(WriteStringToBlob))]
+    /// <summary>
+    /// Writes a string to a blob. Validates the input before writing the content to the blob.
+    /// </summary>
+    /// <param name="input">Blob storage information including container and blob names, along with the content to write.</param>
+    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
     public async Task WriteStringToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
         using var span = _tracer.StartActiveSpan(nameof(WriteStringToBlob));
@@ -106,6 +123,11 @@ public class BlobStorageActivities
     }
 
     [Function(nameof(WriteBufferToBlob))]
+    /// <summary>
+    /// Writes a byte array to a blob. Validates the input before writing the buffer to the blob.
+    /// </summary>
+    /// <param name="input">Blob storage information including container and blob names, along with the buffer to write.</param>
+    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
     public async Task WriteBufferToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
         using var span = _tracer.StartActiveSpan(nameof(WriteStringToBlob));
@@ -133,7 +155,13 @@ public class BlobStorageActivities
             span.RecordException(ex);
         }
     }
-    
+    /// <summary>
+    /// Validates the blob storage input, optionally checking if the content is not null or whitespace when required.
+    /// </summary>
+    /// <param name="input">The blob storage information to validate.</param>
+    /// <param name="log">Logger for logging warnings in case of invalid inputs.</param>
+    /// <param name="checkContent">Flag indicating whether to check the content for null or whitespace.</param>
+    /// <returns>True if the input is valid, otherwise false.</returns>
     private static bool ValidateInput(BlobStorageInfo input, ILogger log, bool checkContent = true)
     {
         if (!checkContent || !string.IsNullOrWhiteSpace(input.Content))

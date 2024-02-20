@@ -6,13 +6,20 @@ namespace DurableOrchestrator.Workflows;
 public abstract class BaseWorkflow
 {
     protected readonly Tracer Tracer;
-
+    /// <summary>
+    /// Initializes a new instance of the BaseWorkflow class with a specified workflow name. It sets up tracing for the workflow using the OpenTelemetry framework.
+    /// </summary>
+    /// <param name="workflowName">The name of the workflow for which tracing is to be set up.</param>
     public BaseWorkflow(string workflowName)
     {
         Tracer = TracerProvider.Default.GetTracer(workflowName);
     }
 
-   
+    /// <summary>
+    /// Validates the inputs provided to a workflow. It checks for null values, mandatory fields, and specific conditions that must be met for the workflow to proceed.
+    /// </summary>
+    /// <param name="workFlowInput">The WorkFlowInput object containing the input data for validation.</param>
+    /// <returns>A ValidationResult object containing information about whether the input is valid, and if not, a list of error messages.</returns>
     protected static ValidationResult ValidateWorkFlowInputs(WorkFlowInput workFlowInput)
     {
         var result = new ValidationResult { IsValid = true };
@@ -96,7 +103,12 @@ public abstract class BaseWorkflow
         }
         return result;
     }
-
+    /// <summary>
+    /// Extracts the workflow input from a JSON-formatted string. It deserializes the request body into a WorkFlowInput object.
+    /// </summary>
+    /// <param name="requestBody">The JSON-formatted string containing the workflow input data.</param>
+    /// <returns>A WorkFlowInput object deserialized from the requestBody string.</returns>
+    /// <exception cref="ArgumentException">Thrown when the requestBody is not a valid JSON representation of a WorkFlowInput object.</exception>
     protected static WorkFlowInput ExtractInput(string requestBody)
     {
         var workFlowInput = JsonSerializer.Deserialize<WorkFlowInput>(requestBody) ??
