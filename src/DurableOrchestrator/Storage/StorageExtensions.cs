@@ -20,14 +20,20 @@ internal static class StorageExtensions
 
     public static IServiceCollection AddBlobStorageClients(this IServiceCollection services, IConfiguration configuration)
     {
-        // Instantiate source and target BlobServiceClient using configuration
-        string SourceStorageAccountName = configuration["BlobSourceStorageAccountName"] ?? throw new InvalidOperationException("BlobSourceStorageAccountName is not configured.");
-        string TargetStorageAccountName = configuration["BlobTargetStorageAccountName"] ?? throw new InvalidOperationException("BlobTargetStorageAccountName is not configured.");
-        var sourceClient = new BlobServiceClient(new Uri($"https://{SourceStorageAccountName}.blob.core.windows.net"), new DefaultAzureCredential());
-        var targetClient = new BlobServiceClient(new Uri($"https://{TargetStorageAccountName}.blob.core.windows.net"), new DefaultAzureCredential());
-
         // Register BlobServiceClientsWrapper with the DI container
-        services.AddSingleton(new BlobServiceClientsWrapper(sourceClient, targetClient));
+        services.AddSingleton(sp =>
+        {
+            var credentials = sp.GetRequiredService<DefaultAzureCredential>();
+
+            // Instantiate source and target BlobServiceClient using configuration
+            var sourceStorageAccountName = configuration.GetValue<string>("BlobSourceStorageAccountName") ?? throw new InvalidOperationException("BlobSourceStorageAccountName is not configured.");
+            var targetStorageAccountName = configuration.GetValue<string>("BlobTargetStorageAccountName") ?? throw new InvalidOperationException("BlobTargetStorageAccountName is not configured.");
+
+            var sourceClient = new BlobServiceClient(new Uri($"https://{sourceStorageAccountName}.blob.core.windows.net"), credentials);
+            var targetClient = new BlobServiceClient(new Uri($"https://{targetStorageAccountName}.blob.core.windows.net"), credentials);
+
+            return new BlobServiceClientsWrapper(sourceClient, targetClient);
+        });
 
         return services;
     }

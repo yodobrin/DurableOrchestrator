@@ -10,6 +10,8 @@ internal static class KeyVaultExtensions
     {
         services.AddSingleton(sp =>
         {
+            var credentials = sp.GetRequiredService<DefaultAzureCredential>();
+
             var keyVaultUrl = Environment.GetEnvironmentVariable("KEY_VAULT_URL");
 
             if (string.IsNullOrWhiteSpace(keyVaultUrl))
@@ -17,7 +19,7 @@ internal static class KeyVaultExtensions
                 throw new InvalidOperationException("Key Vault URL is not configured.");
             }
 
-            return new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+            return new SecretClient(new Uri(keyVaultUrl), credentials);
         });
 
         return services;

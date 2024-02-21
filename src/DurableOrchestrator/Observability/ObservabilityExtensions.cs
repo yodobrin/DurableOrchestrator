@@ -55,17 +55,22 @@ internal static class ObservabilityExtensions
 
     private static IServiceCollection AddOpenTelemetry(this IServiceCollection services, HostBuilderContext builder, ObservabilitySettings observabilitySettings)
     {
-        void EnrichActivity(Activity activity)
-        {
-            activity.SetTag("service.name", builder.HostingEnvironment.ApplicationName);
-            activity.SetTag("service.environment", builder.HostingEnvironment.EnvironmentName);
-        }
-
         AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 
-        services.AddOpenTelemetry().WithTracing(tracerBuilder =>
+        services.AddOpenTelemetry()
+        .WithTracing(tracerBuilder =>
         {
-            tracerBuilder.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(builder.HostingEnvironment.ApplicationName).AddTelemetrySdk().AddEnvironmentVariableDetector());
+            tracerBuilder
+                .SetResourceBuilder(
+                    ResourceBuilder.CreateDefault()
+                        .AddService(builder.HostingEnvironment.ApplicationName)
+                        .AddTelemetrySdk()
+                        .AddEnvironmentVariableDetector()
+                        .AddAttributes(new Dictionary<string, object>
+                        {
+                            { "service.name", builder.HostingEnvironment.ApplicationName },
+                            { "service.environment", builder.HostingEnvironment.EnvironmentName }
+                        }));
 
             AddActivitySources(tracerBuilder);
             // Add additional external sources here
@@ -76,7 +81,6 @@ internal static class ObservabilityExtensions
             {
                 opts.EnrichWithHttpRequest = (activity, request) =>
                 {
-                    EnrichActivity(activity);
                     activity.SetTag("http.method", request.Method);
                     activity.SetTag("http.url", request.Path);
                 };
@@ -86,7 +90,6 @@ internal static class ObservabilityExtensions
             {
                 opts.EnrichWithHttpWebRequest = (activity, request) =>
                 {
-                    EnrichActivity(activity);
                     activity.SetTag("http.method", request.Method);
                     activity.SetTag("http.url", request.RequestUri.ToString());
                 };

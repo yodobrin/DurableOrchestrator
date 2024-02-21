@@ -1,8 +1,10 @@
+using Azure.Identity;
+using DurableOrchestrator.AI;
 using DurableOrchestrator.KeyVault;
 using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
-using DurableOrchestrator.AI;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 var host = new HostBuilder()
@@ -15,6 +17,24 @@ var host = new HostBuilder()
     })
     .ConfigureServices((builder, services) =>
     {
+        services.AddSingleton(_ =>
+        {
+            var azureCredentials = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ExcludeEnvironmentCredential = true,
+                ExcludeInteractiveBrowserCredential = true,
+                ExcludeVisualStudioCredential = true,
+                ExcludeVisualStudioCodeCredential = true,
+                ExcludeSharedTokenCacheCredential = true,
+                ExcludeAzureDeveloperCliCredential = true,
+                ExcludeAzurePowerShellCredential = true,
+                ExcludeWorkloadIdentityCredential = true,
+                CredentialProcessTimeout = TimeSpan.FromSeconds(10)
+            });
+
+            return azureCredentials;
+        });
+
         // No changes needed here for KeyVault and Observability
         services.AddObservability(builder);
         services.AddKeyVault();
