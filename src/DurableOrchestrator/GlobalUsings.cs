@@ -7,3 +7,6 @@ global using Microsoft.Azure.Functions.Worker.Http;
 global using Microsoft.DurableTask;
 global using Microsoft.DurableTask.Client;
 global using Microsoft.Extensions.Logging;
+global using OpenTelemetry;
+global using OpenTelemetry.Trace;
+global using OpenTelemetry.Context.Propagation;

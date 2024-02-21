@@ -1,37 +1,27 @@
 using Azure.AI.TextAnalytics;
-using DurableOrchestrator.Observability;
-using OpenTelemetry.Trace;
+using DurableOrchestrator.Activities;
 using DurableOrchestrator.Models;
+using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.AI;
 
 [ActivitySource(nameof(TextAnalyticsActivities))]
-public class TextAnalyticsActivities
+public class TextAnalyticsActivities(TextAnalyticsClient client, ILogger<TextAnalyticsActivities> log) : BaseActivity(nameof(TextAnalyticsActivities))
 {
-    private readonly TextAnalyticsClient _client;
-    private readonly ILogger<TextAnalyticsActivities> _log;
-    private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(TextAnalyticsActivities));
-
-    public TextAnalyticsActivities(TextAnalyticsClient client, ILogger<TextAnalyticsActivities> log)
-    {
-        _client = client;
-        _log = log;
-    }
-
-    [Function(nameof(GetSentiment))]
     /// <summary>
     /// Analyzes the sentiment of the provided text using Azure AI Text Analytics.
     /// </summary>
     /// <param name="input">The text analytics request containing the text to analyze.</param>
     /// <param name="executionContext">The function execution context.</param>
     /// <returns>The sentiment analysis result as a string, or null if an error occurs.</returns>
-
-    public async Task<string?> GetSentiment([ActivityTrigger] TextAnalyticsRequest input,
+    [Function(nameof(GetSentiment))]
+    public async Task<string?> GetSentiment(
+        [ActivityTrigger] TextAnalyticsRequest input,
         FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(nameof(GetSentiment));
+        using var span = StartActiveSpan(nameof(GetSentiment), input);
 
-        if (!ValidateInput(input, _log))
+        if (!ValidateInput(input, log))
         {
             // throw an exception to indicate that the input is invalid
             throw new ArgumentException("GetSentiment::Input is invalid.");
@@ -39,12 +29,12 @@ public class TextAnalyticsActivities
 
         try
         {
-            var response = await _client.AnalyzeSentimentAsync(input.TextsToAnalyze);
+            var response = await client.AnalyzeSentimentAsync(input.TextsToAnalyze);
             return response.Value.Sentiment.ToString();
         }
         catch (Exception ex)
         {
-            _log.LogError("Error in GetSentiment: {Message}", ex.Message);
+            log.LogError("Error in GetSentiment: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -59,7 +49,7 @@ public class TextAnalyticsActivities
     /// <param name="input">The text analytics request to validate.</param>
     /// <param name="log">The logger instance for logging validation errors.</param>
     /// <returns>true if the input is valid; otherwise, false.</returns>
-    static bool ValidateInput(TextAnalyticsRequest input, ILogger<TextAnalyticsActivities> log)
+    private static bool ValidateInput(TextAnalyticsRequest? input, ILogger<TextAnalyticsActivities> log)
     {
         if (input == null)
         {

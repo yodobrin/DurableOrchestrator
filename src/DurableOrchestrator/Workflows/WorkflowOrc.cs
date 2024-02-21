@@ -1,62 +1,70 @@
-using DurableOrchestrator.Observability;
-using DurableOrchestrator.Models;
-using DurableOrchestrator.Storage;
 using DurableOrchestrator.KeyVault;
-using OpenTelemetry.Trace;
+using DurableOrchestrator.Models;
+using DurableOrchestrator.Observability;
+using DurableOrchestrator.Storage;
 
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(WorkflowOrc))]
-public class WorkflowOrc : BaseWorkflow
+public class WorkflowOrc() : BaseWorkflow(nameof(WorkflowOrc))
 {
-    private readonly Tracer _tracer = TracerProvider.Default.GetTracer(nameof(WorkflowOrc));
     private const string OrchestrationName = "WorkflowOrc";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
-    public WorkflowOrc() : base(nameof(WorkflowOrc)) { }
 
     [Function(OrchestrationName)]
-    public async Task<List<string>> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
+    public async Task<List<string>> RunOrchestrator(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
     {
-        using var span = _tracer.StartActiveSpan(OrchestrationName);
+        var workFlowInput = context.GetInput<WorkFlowInput>() ??
+                            throw new ArgumentNullException(nameof(context), "WorkFlowInput is null.");
 
+        using var span = StartActiveSpan(OrchestrationName, workFlowInput);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
 
         var orchestrationResults = new List<string>();
 
-        var workFlowInput = context.GetInput<WorkFlowInput>();
-        ValidationResult validationResult = ValidateWorkFlowInputs(workFlowInput!);
+        var validationResult = ValidateWorkFlowInputs(workFlowInput);
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(validationResult.ValidationMessages);
             log.LogError($"WorkflowOrc::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
-        else
-        {
-            orchestrationResults.Add("WorkFlowInput is valid.");
-            log.LogInformation("WorkflowOrc::WorkFlowInput is valid.");
-        }
+
+        orchestrationResults.Add("WorkFlowInput is valid.");
+        log.LogInformation("WorkflowOrc::WorkFlowInput is valid.");
 
         // Step 1: Retrieve the secret value
         try
         {
-            var secretName = workFlowInput!.Name;
-            var secretValue = await context.CallActivityAsync<string>(nameof(KeyVaultActivities.GetSecretFromKeyVault), secretName);
+            var secretName = workFlowInput.Name;
+
+            var secretInput = new KeyVaultRequest { SecretName = secretName };
+            InjectTracingContext(secretInput, span.Context);
+
+            var secretValue = await context.CallActivityAsync<string>(
+                nameof(KeyVaultActivities.GetSecretFromKeyVault),
+                secretInput);
             orchestrationResults.Add($"Successfully retrieved secret: {secretName}");
+
             if (string.IsNullOrEmpty(secretValue))
             {
                 log.LogError("Secret value is null or empty.");
                 orchestrationResults.Add($"Error: Secret value is null or empty.");
                 return orchestrationResults;
             }
+
             // Update BlobStorageInfo with the secret value
-            workFlowInput!.TargetBlobStorageInfo!.Content = secretValue;
+            workFlowInput.TargetBlobStorageInfo!.Content = secretValue;
+            InjectTracingContext(workFlowInput.TargetBlobStorageInfo!, span.Context);
 
             // Step 2: Write the secret value to blob storage
-            await context.CallActivityAsync(nameof(BlobStorageActivities.WriteStringToBlob), workFlowInput.TargetBlobStorageInfo);
+            await context.CallActivityAsync(
+                nameof(BlobStorageActivities.WriteStringToBlob),
+                workFlowInput.TargetBlobStorageInfo);
             orchestrationResults.Add($"Successfully stored secret '{secretName}' in blob storage.");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             log.LogError("Error during orchestration: {Message}", ex.Message);
             orchestrationResults.Add($"Error: {ex.Message}");
@@ -72,7 +80,7 @@ public class WorkflowOrc : BaseWorkflow
         [DurableClient] DurableTaskClient starter,
         FunctionContext executionContext)
     {
-        using var span = _tracer.StartActiveSpan(OrchestrationTriggerName);
+        using var span = StartActiveSpan(OrchestrationTriggerName);
 
         var log = executionContext.GetLogger(OrchestrationTriggerName);
 
@@ -83,7 +91,9 @@ public class WorkflowOrc : BaseWorkflow
         {
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
+
         var input = ExtractInput(requestBody);
+        InjectTracingContext(input, span.Context);
 
         // Function input comes from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
