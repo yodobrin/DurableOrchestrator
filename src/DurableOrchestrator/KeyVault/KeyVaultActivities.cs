@@ -6,7 +6,11 @@ using DurableOrchestrator.Observability;
 namespace DurableOrchestrator.KeyVault;
 
 [ActivitySource(nameof(KeyVaultActivities))]
-public class KeyVaultActivities(SecretClient client, ILogger<KeyVaultActivities> log) : BaseActivity(nameof(KeyVaultActivities))
+public class KeyVaultActivities(
+    SecretClient client,
+    ILogger<KeyVaultActivities> log,
+    ObservabilitySettings observabilitySettings)
+    : BaseActivity(nameof(KeyVaultActivities), observabilitySettings)
 {
     private const string DefaultSecretValue = "N/A";
 

@@ -6,7 +6,11 @@ using DurableOrchestrator.Observability;
 namespace DurableOrchestrator.AI;
 
 [ActivitySource(nameof(TextAnalyticsActivities))]
-public class TextAnalyticsActivities(TextAnalyticsClient client, ILogger<TextAnalyticsActivities> log) : BaseActivity(nameof(TextAnalyticsActivities))
+public class TextAnalyticsActivities(
+    TextAnalyticsClient client,
+    ObservabilitySettings observabilitySettings,
+    ILogger<TextAnalyticsActivities> log)
+    : BaseActivity(nameof(TextAnalyticsActivities), observabilitySettings)
 {
     /// <summary>
     /// Analyzes the sentiment of the provided text using Azure AI Text Analytics.
@@ -56,11 +60,13 @@ public class TextAnalyticsActivities(TextAnalyticsClient client, ILogger<TextAna
             log.LogError("Input is null.");
             return false;
         }
+
         if (string.IsNullOrWhiteSpace(input.TextsToAnalyze))
         {
             log.LogError("TextsToAnalyze is null or whitespace.");
             return false;
         }
+
         return true;
     }
 }
