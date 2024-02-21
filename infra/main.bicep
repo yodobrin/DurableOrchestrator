@@ -217,6 +217,10 @@ module functionApp './compute/function-app.bicep' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.outputs.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
         }
         {
+          name: 'MANAGED_IDENTITY_CLIENT_ID'
+          value: managedIdentity.outputs.clientId
+        }
+        {
           name: 'KEY_VAULT_URL'
           value: keyVault.outputs.uri
         }
