@@ -93,7 +93,7 @@ public class CopyBlobWorkflow() : BaseWorkflow(nameof(CopyBlobWorkflow))
         InjectTracingContext(input, span.Context);
 
         // Function input comes from the request content.
-        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("CopyBlobWorkflow", input);
+        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

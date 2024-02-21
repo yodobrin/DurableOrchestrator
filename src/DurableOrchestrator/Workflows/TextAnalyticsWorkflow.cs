@@ -41,7 +41,7 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(nameof(TextAnalyticsWorkflow
         orchestrationResults.Add("TextAnalyticsWorkflow::WorkFlowInput is valid.");
         log.LogInformation("TextAnalyticsWorkflow::WorkFlowInput is valid.");
 
-        // step 3: 
+        // step 3:
         // call the sentiment analysis activity for each text analytics request - fan-out/fan-in
         var sentimentTasks = new List<Task<string?>>();
         // both workflowinput and textanalyticsrequests are not null - checked above
@@ -123,7 +123,7 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(nameof(TextAnalyticsWorkflow
         InjectTracingContext(input, span.Context);
 
         // Function input extracted from the request content.
-        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("TextAnalyticsWorkflow", input);
+        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 
