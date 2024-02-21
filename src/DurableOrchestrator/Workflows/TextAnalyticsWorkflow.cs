@@ -123,7 +123,7 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(nameof(TextAnalyticsWorkflow
         InjectTracingContext(input, span.Context);
 
         // Function input extracted from the request content.
-        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("BatchExtractSentiment", input);
+        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("TextAnalyticsWorkflow", input);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 
