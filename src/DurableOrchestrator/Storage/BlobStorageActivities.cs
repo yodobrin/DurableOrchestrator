@@ -8,8 +8,9 @@ namespace DurableOrchestrator.Storage;
 [ActivitySource(nameof(BlobStorageActivities))]
 public class BlobStorageActivities(
     BlobServiceClientsWrapper blobServiceClientsWrapper,
-    ILogger<BlobStorageActivities> log)
-    : BaseActivity(nameof(BlobStorageActivities))
+    ILogger<BlobStorageActivities> log,
+    ObservabilitySettings observabilitySettings)
+    : BaseActivity(nameof(BlobStorageActivities), observabilitySettings)
 {
     /// <summary>
     /// Retrieves the content of a blob as a string. Validates the input before attempting to read the blob's content.

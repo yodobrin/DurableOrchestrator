@@ -1,17 +1,19 @@
 using DurableOrchestrator.Models;
+using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.Activities;
 
 /// <summary>
 /// Defines the base class for all activity classes.
 /// </summary>
-public abstract class BaseActivity(string activityName)
+public abstract class BaseActivity(string activityName, ObservabilitySettings observabilitySettings)
 {
-    protected readonly Tracer Tracer = TracerProvider.Default.GetTracer(activityName);
+    protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(activityName, observabilitySettings).Build();
 
     protected TelemetrySpan StartActiveSpan(string name, IObservableContext? input = default)
     {
-        return input != default ? Tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : Tracer.StartActiveSpan(name);
+        var tracer = ActivityTracerProvider.GetTracer(activityName);
+        return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : tracer.StartActiveSpan(name);
     }
 
     protected void InjectTracingContext(IObservableContext activityInput, SpanContext spanContext)

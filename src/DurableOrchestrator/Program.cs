@@ -19,7 +19,7 @@ var host = new HostBuilder()
     {
         services.AddSingleton(_ =>
         {
-            var azureCredentials = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            var credentialOpts = new DefaultAzureCredentialOptions
             {
                 ExcludeEnvironmentCredential = true,
                 ExcludeInteractiveBrowserCredential = true,
@@ -30,9 +30,15 @@ var host = new HostBuilder()
                 ExcludeAzurePowerShellCredential = true,
                 ExcludeWorkloadIdentityCredential = true,
                 CredentialProcessTimeout = TimeSpan.FromSeconds(10)
-            });
+            };
 
-            return azureCredentials;
+            var managedIdentityClientId = builder.Configuration.GetValue<string>("MANAGED_IDENTITY_CLIENT_ID");
+            if (!string.IsNullOrEmpty(managedIdentityClientId))
+            {
+                credentialOpts.ManagedIdentityClientId = managedIdentityClientId;
+            }
+
+            return new DefaultAzureCredential(credentialOpts);
         });
 
         // No changes needed here for KeyVault and Observability

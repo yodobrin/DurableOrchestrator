@@ -6,7 +6,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(TextAnalyticsWorkflow))]
-public class TextAnalyticsWorkflow() : BaseWorkflow(nameof(TextAnalyticsWorkflow))
+public class TextAnalyticsWorkflow(ObservabilitySettings observabilitySettings)
+    : BaseWorkflow(nameof(TextAnalyticsWorkflow), observabilitySettings)
 {
     private const string OrchestrationName = "TextAnalyticsWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
@@ -33,8 +34,10 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(nameof(TextAnalyticsWorkflow
         var validationResult = ValidateWorkFlowInputs(workFlowInput!);
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError($"TextAnalyticsWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            orchestrationResults.AddRange(validationResult
+                .ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
+            log.LogError(
+                $"TextAnalyticsWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
@@ -52,6 +55,7 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(nameof(TextAnalyticsWorkflow
             var task = context.CallActivityAsync<string?>(nameof(TextAnalyticsActivities.GetSentiment), request);
             sentimentTasks.Add(task);
         }
+
         // Fan-in: Wait for all sentiment analysis tasks to complete
         await Task.WhenAll(sentimentTasks);
         // Collect results

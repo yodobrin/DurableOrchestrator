@@ -1,4 +1,5 @@
 using DurableOrchestrator.Models;
+using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -6,9 +7,9 @@ namespace DurableOrchestrator.Workflows;
 /// Initializes a new instance of the BaseWorkflow class with a specified workflow name. It sets up tracing for the workflow using the OpenTelemetry framework.
 /// </summary>
 /// <param name="workflowName">The name of the workflow for which tracing is to be set up.</param>
-public abstract class BaseWorkflow(string workflowName)
+public abstract class BaseWorkflow(string workflowName, ObservabilitySettings observabilitySettings)
 {
-    protected readonly Tracer Tracer = TracerProvider.Default.GetTracer(workflowName);
+    protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(workflowName, observabilitySettings).Build();
 
     /// <summary>
     /// Validates the inputs provided to a workflow. It checks for null values, mandatory fields, and specific conditions that must be met for the workflow to proceed.
@@ -125,7 +126,8 @@ public abstract class BaseWorkflow(string workflowName)
 
     protected TelemetrySpan StartActiveSpan(string name, IObservableContext? input = default)
     {
-        return input != default ? Tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : Tracer.StartActiveSpan(name);
+        var tracer = ActivityTracerProvider.GetTracer(workflowName);
+        return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : tracer.StartActiveSpan(name);
     }
 
     protected void InjectTracingContext(IObservableContext activityInput, SpanContext spanContext)

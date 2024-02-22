@@ -30,7 +30,10 @@ internal static class ObservabilityExtensions
         return services;
     }
 
-    private static IServiceCollection AddLogging(this IServiceCollection services, HostBuilderContext builder, ObservabilitySettings observabilitySettings)
+    private static IServiceCollection AddLogging(
+        this IServiceCollection services,
+        HostBuilderContext builder,
+        ObservabilitySettings observabilitySettings)
     {
         services.AddLogging(logBuilder =>
         {
@@ -38,7 +41,8 @@ internal static class ObservabilityExtensions
             {
                 if (!string.IsNullOrEmpty(observabilitySettings.ApplicationInsightsConnectionString))
                 {
-                    otOpts.AddAzureMonitorLogExporter(amOpts => amOpts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString);
+                    otOpts.AddAzureMonitorLogExporter(amOpts =>
+                        amOpts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString);
                 }
 
                 otOpts.AddConsoleExporter();
@@ -47,100 +51,110 @@ internal static class ObservabilityExtensions
             });
 
             logBuilder.AddConsole();
-            logBuilder.SetMinimumLevel(builder.HostingEnvironment.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
+            logBuilder.SetMinimumLevel(builder.HostingEnvironment.IsDevelopment()
+                ? LogLevel.Information
+                : LogLevel.Warning);
         });
 
         return services;
     }
 
-    private static IServiceCollection AddOpenTelemetry(this IServiceCollection services, HostBuilderContext builder, ObservabilitySettings observabilitySettings)
+    private static IServiceCollection AddOpenTelemetry(
+        this IServiceCollection services,
+        HostBuilderContext builder,
+        ObservabilitySettings observabilitySettings)
     {
         AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 
         services.AddOpenTelemetry()
-        .WithTracing(tracerBuilder =>
-        {
-            tracerBuilder
-                .SetResourceBuilder(
-                    ResourceBuilder.CreateDefault()
-                        .AddService(builder.HostingEnvironment.ApplicationName)
-                        .AddTelemetrySdk()
-                        .AddEnvironmentVariableDetector()
-                        .AddAttributes(new Dictionary<string, object>
-                        {
-                            { "service.name", builder.HostingEnvironment.ApplicationName },
-                            { "service.environment", builder.HostingEnvironment.EnvironmentName }
-                        }));
-
-            AddActivitySources(tracerBuilder);
-            // Add additional external sources here
-
-            tracerBuilder.SetSampler(new AlwaysOnSampler());
-
-            tracerBuilder.AddAspNetCoreInstrumentation(opts =>
+            .WithTracing(tracerBuilder =>
             {
-                opts.EnrichWithHttpRequest = (activity, request) =>
+                tracerBuilder.ConfigureTracerBuilder(builder.HostingEnvironment.ApplicationName,
+                    observabilitySettings);
+            })
+            .WithMetrics(metricsBuilder =>
+            {
+                AddMeters(metricsBuilder);
+                // Add additional external meters here
+
+                metricsBuilder.AddConsoleExporter();
+                metricsBuilder.AddOtlpExporter();
+
+                if (!string.IsNullOrEmpty(observabilitySettings.ApplicationInsightsConnectionString))
                 {
-                    activity.SetTag("http.method", request.Method);
-                    activity.SetTag("http.url", request.Path);
-                };
+                    metricsBuilder.AddAzureMonitorMetricExporter(opts =>
+                    {
+                        opts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString;
+                    });
+                }
             });
-
-            tracerBuilder.AddHttpClientInstrumentation(opts =>
-            {
-                opts.EnrichWithHttpWebRequest = (activity, request) =>
-                {
-                    activity.SetTag("http.method", request.Method);
-                    activity.SetTag("http.url", request.RequestUri.ToString());
-                };
-            });
-
-            // Add additional instrumentation here (e.g. SQL, Entity Framework, etc.)
-
-            tracerBuilder.AddConsoleExporter();
-            tracerBuilder.AddOtlpExporter();
-
-            if (!string.IsNullOrEmpty(observabilitySettings.ApplicationInsightsConnectionString))
-            {
-                tracerBuilder.AddAzureMonitorTraceExporter(opts =>
-                {
-                    opts.Diagnostics.IsLoggingEnabled = true;
-                    opts.Diagnostics.IsTelemetryEnabled = true;
-                    opts.Diagnostics.IsDistributedTracingEnabled = true;
-                    opts.Diagnostics.IsLoggingContentEnabled = true;
-                    opts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString;
-                });
-            }
-
-            if (builder.HostingEnvironment.IsDevelopment())
-            {
-                tracerBuilder.AddZipkinExporter(opts =>
-                {
-                    opts.Endpoint = new Uri("http://localhost:9411/api/v2/spans");
-                });
-            }
-        })
-        .WithMetrics(metricsBuilder =>
-        {
-            AddMeters(metricsBuilder);
-            // Add additional external meters here
-
-            metricsBuilder.AddConsoleExporter();
-            metricsBuilder.AddOtlpExporter();
-
-            if (!string.IsNullOrEmpty(observabilitySettings.ApplicationInsightsConnectionString))
-            {
-                metricsBuilder.AddAzureMonitorMetricExporter(opts =>
-                {
-                    opts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString;
-                });
-            }
-        });
 
         services.AddSingleton(new ActivitySource(builder.HostingEnvironment.ApplicationName));
         services.AddSingleton(TracerProvider.Default.GetTracer(builder.HostingEnvironment.ApplicationName));
 
         return services;
+    }
+
+    internal static TracerProviderBuilder ConfigureTracerBuilder(
+        this TracerProviderBuilder tracerBuilder,
+        string serviceName,
+        ObservabilitySettings observabilitySettings)
+    {
+        tracerBuilder
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService(serviceName)
+                    .AddTelemetrySdk()
+                    .AddEnvironmentVariableDetector()
+                    .AddAttributes(new Dictionary<string, object> { { "service.name", serviceName } }));
+
+        AddActivitySources(tracerBuilder);
+        // Add additional external sources here
+
+        tracerBuilder.SetSampler(new AlwaysOnSampler());
+
+        tracerBuilder.AddAspNetCoreInstrumentation(opts =>
+        {
+            opts.EnrichWithHttpRequest = (activity, request) =>
+            {
+                activity.SetTag("http.method", request.Method);
+                activity.SetTag("http.url", request.Path);
+            };
+        });
+
+        tracerBuilder.AddHttpClientInstrumentation(opts =>
+        {
+            opts.EnrichWithHttpWebRequest = (activity, request) =>
+            {
+                activity.SetTag("http.method", request.Method);
+                activity.SetTag("http.url", request.RequestUri.ToString());
+            };
+        });
+
+        // Add additional instrumentation here (e.g. SQL, Entity Framework, etc.)
+
+        tracerBuilder.AddConsoleExporter();
+        tracerBuilder.AddOtlpExporter();
+
+        if (!string.IsNullOrEmpty(observabilitySettings.ApplicationInsightsConnectionString))
+        {
+            tracerBuilder.AddAzureMonitorTraceExporter(opts =>
+            {
+                opts.Diagnostics.IsLoggingEnabled = true;
+                opts.Diagnostics.IsTelemetryEnabled = true;
+                opts.Diagnostics.IsDistributedTracingEnabled = true;
+                opts.Diagnostics.IsLoggingContentEnabled = true;
+                opts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString;
+            });
+        }
+
+        tracerBuilder.AddZipkinExporter(opts =>
+        {
+            opts.Endpoint =
+                new Uri(observabilitySettings.ZipkinEndpointUrl ?? "http://localhost:9411/api/v2/spans");
+        });
+
+        return tracerBuilder;
     }
 
     private static TracerProviderBuilder AddActivitySources(this TracerProviderBuilder builder)

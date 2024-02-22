@@ -5,7 +5,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(CopyBlobWorkflow))]
-public class CopyBlobWorkflow() : BaseWorkflow(nameof(CopyBlobWorkflow))
+public class CopyBlobWorkflow(ObservabilitySettings observabilitySettings)
+    : BaseWorkflow(nameof(CopyBlobWorkflow), observabilitySettings)
 {
     private const string OrchestrationName = "CopyBlobWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
@@ -44,7 +45,8 @@ public class CopyBlobWorkflow() : BaseWorkflow(nameof(CopyBlobWorkflow))
         var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
         InjectTracingContext(sourceBlobStorageInfo, span.Context);
 
-        var blobContent = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), sourceBlobStorageInfo);
+        var blobContent = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer),
+            sourceBlobStorageInfo);
         log.LogInformation($"CopyBlobWorkflow::Retrieved blob content size: {blobContent?.Length ?? 0} bytes.");
 
         if (blobContent == null || blobContent.Length == 0)
