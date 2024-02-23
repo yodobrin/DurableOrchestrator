@@ -1,15 +1,5 @@
 targetScope = 'subscription'
 
-type appSettingInfo = {
-  name: string
-  value: string
-}
-
-type appSettingsInfo = {
-  values: appSettingInfo[]
-  functionApp: string[]
-}
-
 @minLength(1)
 @maxLength(64)
 @description('Name of the workload which is used to generate a short unique hash used in all resources.')
@@ -25,23 +15,6 @@ param resourceGroupName string = ''
 @description('Tags for all resources.')
 param tags object = {}
 
-@description('Name of the Managed Identity. If empty, a unique name will be generated.')
-param managedIdentityName string = ''
-@description('Name of the Key Vault. If empty, a unique name will be generated.')
-param keyVaultName string = ''
-@description('Name of the Text Analytics. If empty, a unique name will be generated.')
-param textAnalyticsName string = ''
-@description('Name of the Log Analytics Workspace. If empty, a unique name will be generated.')
-param logAnalyticsWorkspaceName string = ''
-@description('Name of the Application Insights. If empty, a unique name will be generated.')
-param applicationInsightsName string = ''
-@description('Name of the Storage Account. If empty, a unique name will be generated.')
-param storageAccountName string = ''
-@description('Name of the App Service Plan. If empty, a unique name will be generated.')
-param appServicePlanName string = ''
-@description('Name of the Function App. If empty, a unique name will be generated.')
-param functionAppName string = ''
-
 var abbrs = loadJsonContent('./abbreviations.json')
 var roles = loadJsonContent('./roles.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
@@ -53,10 +26,10 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 }
 
 module managedIdentity './security/managed-identity.bicep' = {
-  name: !empty(managedIdentityName) ? managedIdentityName : '${abbrs.managedIdentity}${resourceToken}'
+  name: '${abbrs.managedIdentity}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(managedIdentityName) ? managedIdentityName : '${abbrs.managedIdentity}${resourceToken}'
+    name: '${abbrs.managedIdentity}${resourceToken}'
     location: location
     tags: union(tags, {})
   }
@@ -68,10 +41,10 @@ resource keyVaultSecretsOfficer 'Microsoft.Authorization/roleDefinitions@2022-04
 }
 
 module keyVault './security/key-vault.bicep' = {
-  name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVault}${resourceToken}'
+  name: '${abbrs.keyVault}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVault}${resourceToken}'
+    name: '${abbrs.keyVault}${resourceToken}'
     location: location
     tags: union(tags, {})
     roleAssignments: [
@@ -83,16 +56,41 @@ module keyVault './security/key-vault.bicep' = {
   }
 }
 
+resource containerRegistryPull 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.acrPull
+}
+
+module containerRegistry 'containers/container-registry.bicep' = {
+  name: '${abbrs.containerRegistry}${resourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.containerRegistry}${resourceToken}'
+    location: location
+    tags: union(tags, {})
+    sku: {
+      name: 'Basic'
+    }
+    adminUserEnabled: true
+    roleAssignments: [
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: containerRegistryPull.id
+      }
+    ]
+  }
+}
+
 resource cognitiveServicesLanguageOwner 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: resourceGroup
   name: roles.cognitiveServicesLanguageOwner
 }
 
 module textAnalytics './ai_ml/text-analytics.bicep' = {
-  name: !empty(textAnalyticsName) ? textAnalyticsName : '${abbrs.languageService}${resourceToken}'
+  name: '${abbrs.languageService}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(textAnalyticsName) ? textAnalyticsName : '${abbrs.languageService}${resourceToken}'
+    name: '${abbrs.languageService}${resourceToken}'
     location: location
     tags: union(tags, {})
     roleAssignments: [
@@ -105,20 +103,20 @@ module textAnalytics './ai_ml/text-analytics.bicep' = {
 }
 
 module logAnalyticsWorkspace './management_governance/log-analytics-workspace.bicep' = {
-  name: !empty(logAnalyticsWorkspaceName) ? logAnalyticsWorkspaceName : '${abbrs.logAnalyticsWorkspace}${resourceToken}'
+  name: '${abbrs.logAnalyticsWorkspace}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(logAnalyticsWorkspaceName) ? logAnalyticsWorkspaceName : '${abbrs.logAnalyticsWorkspace}${resourceToken}'
+    name: '${abbrs.logAnalyticsWorkspace}${resourceToken}'
     location: location
     tags: union(tags, {})
   }
 }
 
 module applicationInsights './management_governance/application-insights.bicep' = {
-  name: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.applicationInsights}${resourceToken}'
+  name: '${abbrs.applicationInsights}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.applicationInsights}${resourceToken}'
+    name: '${abbrs.applicationInsights}${resourceToken}'
     location: location
     tags: union(tags, {})
     logAnalyticsWorkspaceName: logAnalyticsWorkspace.outputs.name
@@ -131,10 +129,10 @@ resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@202
 }
 
 module storageAccount './storage/storage-account.bicep' = {
-  name: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageAccount}${resourceToken}'
+  name: '${abbrs.storageAccount}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageAccount}${resourceToken}'
+    name: '${abbrs.storageAccount}${resourceToken}'
     location: location
     tags: union(tags, {})
     sku: {
@@ -154,99 +152,71 @@ module storageAccount './storage/storage-account.bicep' = {
   }
 }
 
-resource storageAccountRef 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
-  name: storageAccount.name
-  scope: resourceGroup
-}
-
-module appServicePlan './compute/app-service-plan.bicep' = {
-  name: !empty(appServicePlanName) ? appServicePlanName : '${abbrs.appServicePlan}${resourceToken}'
+module containerAppsEnvironment 'containers/container-apps-environment.bicep' = {
+  name: '${abbrs.containerAppsEnvironment}${resourceToken}'
   scope: resourceGroup
   params: {
-    name: !empty(appServicePlanName) ? appServicePlanName : '${abbrs.appServicePlan}${resourceToken}'
+    name: '${abbrs.containerAppsEnvironment}${resourceToken}'
     location: location
     tags: union(tags, {})
-    sku: {
-      tier: 'PremiumV3'
-      name: 'P0V3'
-    }
-  }
-}
-
-module functionAppSettings './security/key-vault-secret-environment-variables.bicep' = {
-  name: !empty(functionAppName) ? '${functionAppName}-settings' : '${abbrs.functionApp}${resourceToken}-settings'
-  scope: resourceGroup
-  params: {
-    keyVaultVariables: [
-      {
-        name: 'StorageAccountConnectionString'
-        keyVaultSecretUri: storageAccount.outputs.connectionStringSecretUri
-      }
-    ]
-  }
-}
-
-module functionApp './compute/function-app.bicep' = {
-  name: !empty(functionAppName) ? functionAppName : '${abbrs.functionApp}${resourceToken}'
-  scope: resourceGroup
-  params: {
-    name: !empty(functionAppName) ? functionAppName : '${abbrs.functionApp}${resourceToken}'
-    location: location
-    tags: union(tags, {})
-    functionAppIdentityId: managedIdentity.outputs.id
-    appServicePlanId: appServicePlan.outputs.id
-    appSettings: concat([
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'dotnet-isolated'
-        }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '1'
-        }
-        {
-          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-          value: applicationInsights.outputs.connectionString
-        }
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.outputs.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
-        }
-        {
-          name: 'MANAGED_IDENTITY_CLIENT_ID'
-          value: managedIdentity.outputs.clientId
-        }
-        {
-          name: 'KEY_VAULT_URL'
-          value: keyVault.outputs.uri
-        }
-        {
-          name: 'TEXT_ANALYTICS_ENDPOINT'
-          value: textAnalytics.outputs.endpoint
-        }
-        {
-          name: 'BlobSourceStorageAccountName'
-          value: storageAccount.outputs.name
-        }
-        {
-          name: 'BlobTargetStorageAccountName'
-          value: storageAccount.outputs.name
-        }
-      ], functionAppSettings.outputs.environmentVariables)
+    logAnalyticsWorkspaceName: logAnalyticsWorkspace.outputs.name
   }
 }
 
 output resourceGroupInfo object = {
   id: resourceGroup.id
   name: resourceGroup.name
+  location: resourceGroup.location
+  workloadName: workloadName
 }
 
-output functionAppInfo object = {
-  id: functionApp.outputs.id
-  name: functionApp.outputs.name
-  host: functionApp.outputs.host
+output managedIdentityInfo object = {
+  id: managedIdentity.outputs.id
+  name: managedIdentity.outputs.name
+  principalId: managedIdentity.outputs.principalId
+  clientId: managedIdentity.outputs.clientId
+}
+
+output keyVaultInfo object = {
+  id: keyVault.outputs.id
+  name: keyVault.outputs.name
+  uri: keyVault.outputs.uri
+}
+
+output containerRegistryInfo object = {
+  id: containerRegistry.outputs.id
+  name: containerRegistry.outputs.name
+  loginServer: containerRegistry.outputs.loginServer
+}
+
+output textAnalyticsInfo object = {
+  id: textAnalytics.outputs.id
+  name: textAnalytics.outputs.name
+  endpoint: textAnalytics.outputs.endpoint
+  host: textAnalytics.outputs.host
+}
+
+output logAnalyticsWorkspaceInfo object = {
+  id: logAnalyticsWorkspace.outputs.id
+  name: logAnalyticsWorkspace.outputs.name
+  customerId: logAnalyticsWorkspace.outputs.customerId
+}
+
+output applicationInsightsInfo object = {
+  id: applicationInsights.outputs.id
+  name: applicationInsights.outputs.name
+}
+
+output storageAccountInfo object = {
+  id: storageAccount.outputs.id
+  name: storageAccount.outputs.name
+  primaryKeySecretUri: storageAccount.outputs.primaryKeySecretUri
+  connectionStringSecretUri: storageAccount.outputs.connectionStringSecretUri
+}
+
+output containerAppsEnvironmentInfo object = {
+  id: containerAppsEnvironment.outputs.id
+  name: containerAppsEnvironment.outputs.name
+  defaultDomain: containerAppsEnvironment.outputs.defaultDomain
+  staticIp: containerAppsEnvironment.outputs.staticIp
 }
