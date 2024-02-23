@@ -53,7 +53,7 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
   params: {
     name: '${abbrs.containerApp}${durableOrchestratorToken}'
     location: location
-    tags: union(tags, { ContainerApp: 'Durable Orchestrator' })
+    tags: union(tags, { App: 'durable-orchestrator' })
     containerAppsEnvironmentId: containerAppsEnvironmentRef.id
     containerAppIdentityId: managedIdentityRef.id
     imageInContainerRegistry: true

@@ -167,6 +167,7 @@ output resourceGroupInfo object = {
   id: resourceGroup.id
   name: resourceGroup.name
   location: resourceGroup.location
+  workloadName: workloadName
 }
 
 output managedIdentityInfo object = {

@@ -12,6 +12,7 @@ $InfrastructureOutputs = Get-Content -Path $InfrastructureOutputsPath -Raw | Con
 
 $Location = $InfrastructureOutputs.resourceGroupInfo.value.location
 $ResourceGroupName = $InfrastructureOutputs.resourceGroupInfo.value.name
+$WorkloadName = $InfrastructureOutputs.resourceGroupInfo.value.workloadName
 $ContainerRegistryName = $InfrastructureOutputs.containerRegistryInfo.value.name
 
 $ContainerName = "durable-orchestrator"
@@ -38,7 +39,7 @@ az acr run --cmd "acr purge --filter '${ContainerName}:.*' --untagged --ago 1h" 
 
 Write-Host "Deploying container app..."
 
-$DeploymentOutputs = (az deployment group create --name durable-orchestrator-app --resource-group $ResourceGroupName --template-file './app.bicep' --parameters '../../main.parameters.json' --parameters location=$Location --parameters durableOrchestratorContainerImage=$ContainerImageName --query properties.outputs -o json) | ConvertFrom-Json
+$DeploymentOutputs = (az deployment group create --name durable-orchestrator-app --resource-group $ResourceGroupName --template-file './app.bicep' --parameters '../../main.parameters.json' --parameters workloadName=$WorkloadName --parameters location=$Location --parameters durableOrchestratorContainerImage=$ContainerImageName --query properties.outputs -o json) | ConvertFrom-Json
 $DeploymentOutputs | ConvertTo-Json | Out-File -FilePath './AppOutputs.json' -Encoding utf8
 
 return $DeploymentOutputs
