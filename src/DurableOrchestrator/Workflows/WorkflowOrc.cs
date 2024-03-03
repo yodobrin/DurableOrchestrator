@@ -70,7 +70,8 @@ public class WorkflowOrc(ObservabilitySettings observabilitySettings)
             log.LogError("Error during orchestration: {Message}", ex.Message);
             orchestrationResults.Add($"Error: {ex.Message}");
         }
-
+        var splitPdfResult = await context.CallSubOrchestratorAsync<List<string>>("SplitPdfWorkflow", workFlowInput);
+        orchestrationResults.AddRange(splitPdfResult);
         return orchestrationResults;
     }
 
