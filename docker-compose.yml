@@ -8,6 +8,14 @@ services:
     volumes:
       - azurite_data:/data
 
+  otel-collector:
+    image: "otel/opentelemetry-collector-contrib:0.95.0"
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector/config.yaml
+    ports:
+      - 4317:4317
+      - 4318:4318
+
   zipkin:
     image: openzipkin/zipkin
     ports:
