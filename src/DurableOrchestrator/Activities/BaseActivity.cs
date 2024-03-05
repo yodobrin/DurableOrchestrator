@@ -8,11 +8,12 @@ namespace DurableOrchestrator.Activities;
 /// </summary>
 public abstract class BaseActivity(string activityName, ObservabilitySettings observabilitySettings)
 {
-    protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(activityName, observabilitySettings).Build();
+    //protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(activityName, observabilitySettings).Build();
+    protected readonly Tracer Tracer = TracerProvider.Default.GetTracer(activityName);
 
     protected TelemetrySpan StartActiveSpan(string name, IObservableContext? input = default)
     {
-        var tracer = ActivityTracerProvider.GetTracer(activityName);
+        var tracer = Tracer; //ActivityTracerProvider.GetTracer(activityName);
         return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : tracer.StartActiveSpan(name);
     }
 
