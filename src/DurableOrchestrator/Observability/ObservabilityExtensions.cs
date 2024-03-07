@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Azure.Monitor.OpenTelemetry.Exporter;
+using DurableOrchestrator.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Logs;
@@ -13,6 +14,36 @@ namespace DurableOrchestrator.Observability;
 /// </summary>
 internal static class ObservabilityExtensions
 {
+    internal static void InjectTracingContext(this IObservableContext observableContext, SpanContext spanContext)
+    {
+        Propagators.DefaultTextMapPropagator.Inject(
+            new PropagationContext(spanContext, Baggage.Current),
+            observableContext.ObservableProperties,
+            (props, key, value) =>
+            {
+                props ??= new Dictionary<string, object>();
+                props.TryAdd(key, value);
+            });
+    }
+
+    internal static SpanContext ExtractTracingContext(this IObservableContext observableContext)
+    {
+        var propagationContext = Propagators.DefaultTextMapPropagator.Extract(
+            default,
+            observableContext.ObservableProperties,
+            (props, key) =>
+            {
+                if (!props.TryGetValue(key, out var value) || value.ToString() is null)
+                {
+                    return [];
+                }
+
+                return [value.ToString()];
+            });
+
+        return new SpanContext(propagationContext.ActivityContext);
+    }
+
     /// <summary>
     /// Configures the application logging and telemetry.
     /// </summary>
@@ -41,24 +72,6 @@ internal static class ObservabilityExtensions
         // Add additional external sources here
 
         tracerBuilder.SetSampler(new AlwaysOnSampler());
-
-        tracerBuilder.AddAspNetCoreInstrumentation(opts =>
-        {
-            opts.EnrichWithHttpRequest = (activity, request) =>
-            {
-                activity.SetTag("http.method", request.Method);
-                activity.SetTag("http.url", request.Path);
-            };
-        });
-
-        tracerBuilder.AddHttpClientInstrumentation(opts =>
-        {
-            opts.EnrichWithHttpWebRequest = (activity, request) =>
-            {
-                activity.SetTag("http.method", request.Method);
-                activity.SetTag("http.url", request.RequestUri.ToString());
-            };
-        });
 
         // Add additional instrumentation here (e.g. SQL, Entity Framework, etc.)
 
@@ -186,8 +199,7 @@ internal static class ObservabilityExtensions
         return ResourceBuilder.CreateDefault()
             .AddService(serviceName)
             .AddTelemetrySdk()
-            .AddEnvironmentVariableDetector()
-            .AddAttributes(new Dictionary<string, object> { { "service.name", serviceName } });
+            .AddEnvironmentVariableDetector();
     }
 
     private static TracerProviderBuilder AddActivitySources(this TracerProviderBuilder builder)

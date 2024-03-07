@@ -1,4 +1,4 @@
-﻿namespace DurableOrchestrator.Models;
+namespace DurableOrchestrator.Models;
 
 /// <summary>
 /// Defines an interface for sharing the context of an observable sequence through activities.

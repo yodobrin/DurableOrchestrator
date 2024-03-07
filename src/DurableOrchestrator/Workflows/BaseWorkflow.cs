@@ -1,5 +1,4 @@
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -128,36 +127,6 @@ public abstract class BaseWorkflow(string workflowName, ObservabilitySettings ob
     protected TelemetrySpan StartActiveSpan(string name, IObservableContext? input = default)
     {
         var tracer = Tracer; //ActivityTracerProvider.GetTracer(workflowName);
-        return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : tracer.StartActiveSpan(name);
-    }
-
-    protected void InjectTracingContext(IObservableContext activityInput, SpanContext spanContext)
-    {
-        Propagators.DefaultTextMapPropagator.Inject(
-            new PropagationContext(spanContext, Baggage.Current),
-            activityInput.ObservableProperties,
-            (props, key, value) =>
-            {
-                props ??= new Dictionary<string, object>();
-                props.TryAdd(key, value);
-            });
-    }
-
-    protected SpanContext ExtractTracingContext(IObservableContext activityInput)
-    {
-        var propagationContext = Propagators.DefaultTextMapPropagator.Extract(
-            default,
-            activityInput.ObservableProperties,
-            (props, key) =>
-            {
-                if (!props.TryGetValue(key, out var value) || value.ToString() is null)
-                {
-                    return [];
-                }
-
-                return [value.ToString()];
-            });
-
-        return new SpanContext(propagationContext.ActivityContext);
+        return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, input.ExtractTracingContext()) : tracer.StartActiveSpan(name);
     }
 }

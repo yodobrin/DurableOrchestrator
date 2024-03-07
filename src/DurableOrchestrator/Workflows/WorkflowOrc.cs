@@ -1,6 +1,5 @@
 using DurableOrchestrator.KeyVault;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
 
 namespace DurableOrchestrator.Workflows;
@@ -41,7 +40,7 @@ public class WorkflowOrc(ObservabilitySettings observabilitySettings)
             var secretName = workFlowInput.Name;
 
             var secretInput = new KeyVaultRequest { SecretName = secretName };
-            InjectTracingContext(secretInput, span.Context);
+            secretInput.InjectTracingContext(span.Context);
 
             var secretValue = await context.CallActivityAsync<string>(
                 nameof(KeyVaultActivities.GetSecretFromKeyVault),
@@ -57,7 +56,7 @@ public class WorkflowOrc(ObservabilitySettings observabilitySettings)
 
             // Update BlobStorageInfo with the secret value
             workFlowInput.TargetBlobStorageInfo!.Content = secretValue;
-            InjectTracingContext(workFlowInput.TargetBlobStorageInfo!, span.Context);
+            workFlowInput.TargetBlobStorageInfo!.InjectTracingContext(span.Context);
 
             // Step 2: Write the secret value to blob storage
             await context.CallActivityAsync(
@@ -70,7 +69,10 @@ public class WorkflowOrc(ObservabilitySettings observabilitySettings)
             log.LogError("Error during orchestration: {Message}", ex.Message);
             orchestrationResults.Add($"Error: {ex.Message}");
         }
-        var splitPdfResult = await context.CallSubOrchestratorAsync<List<string>>("SplitPdfWorkflow", workFlowInput);
+
+        workFlowInput.InjectTracingContext(span.Context);
+        
+        var splitPdfResult = await context.CallSubOrchestratorAsync<List<string>>(nameof(SplitPdfWorkflow), workFlowInput);
         orchestrationResults.AddRange(splitPdfResult);
         return orchestrationResults;
     }
@@ -95,7 +97,7 @@ public class WorkflowOrc(ObservabilitySettings observabilitySettings)
         }
 
         var input = ExtractInput(requestBody);
-        InjectTracingContext(input, span.Context);
+        input.InjectTracingContext(span.Context);
 
         // Function input comes from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

@@ -1,7 +1,6 @@
-using iText.Kernel.Pdf;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
+using iText.Kernel.Pdf;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -40,7 +39,7 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
                 $"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
-        
+
         orchestrationResults.Add("SplitPdfWorkflow::WorkFlowInput is valid.");
         log.LogInformation("SplitPdfWorkflow::WorkFlowInput is valid.");
 
@@ -57,7 +56,8 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         }
 
         // split the PDF file into individual pages
-        try{
+        try
+        {
             using var pdfReader = new PdfReader(new MemoryStream(sourceFile));
             using var pdfDocument = new PdfDocument(pdfReader);
 
@@ -73,7 +73,7 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
                     pdfDest.Close(); // Ensure closure to flush content to stream
 
                     splitResults.Add(writeMemoryStream.ToArray());
-                    
+
                 }
             }
 
@@ -82,13 +82,13 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         {
             log.LogError($"SplitPdfWorkflow::PDF processing error: {ex.Message}, stack: {ex.StackTrace}, Details: {ex.InnerException}");
             orchestrationResults.Add($"PDF processing error: {ex.Message}");
-             return orchestrationResults;
+            return orchestrationResults;
         }
         catch (Exception ex)
         {
             log.LogError($"SplitPdfWorkflow::Unexpected error: {ex.Message}, StackTrace: {ex.StackTrace}");
             orchestrationResults.Add($"Unexpected error: {ex.Message}");
-             return orchestrationResults;
+            return orchestrationResults;
         }
         // step 4: write the split PDF files to blob storage
         var writeTasks = new List<Task>();
@@ -107,7 +107,7 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         }
         // Fan-out: start all write operations concurrently and wait for all of them to complete
         await Task.WhenAll(writeTasks);
-    
+
 
         orchestrationResults.Add("SplitPdfWorkflow::Split completed.");
 
@@ -141,9 +141,8 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         }
 
         var input = ExtractInput(requestBody);
-        InjectTracingContext(input, span.Context);
+        input.InjectTracingContext(span.Context);
 
-        
         // Function input extracted from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
 
