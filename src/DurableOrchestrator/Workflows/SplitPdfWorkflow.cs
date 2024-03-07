@@ -46,7 +46,10 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         // step 3:
         // read the source file from blob storage using the input
         var splitResults = new List<byte[]>();
-        byte[] sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), workFlowInput.SourceBlobStorageInfo!);
+        var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
+        sourceBlobStorageInfo.InjectTracingContext(span.Context);
+
+        var sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), sourceBlobStorageInfo);
 
         if (sourceFile == null)
         {
@@ -101,6 +104,9 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
                 BlobName = $"{workFlowInput.TargetBlobStorageInfo!.BlobName}_{i + 1}.pdf",
                 Buffer = splitResults[i]
             };
+
+            blobStorageInfo.InjectTracingContext(span.Context);
+
             var task = context.CallActivityAsync(nameof(BlobStorageActivities.WriteBufferToBlob), blobStorageInfo);
             orchestrationResults.Add($"SplitPdfWorkflow:: Added split pdf: {blobStorageInfo.BlobName} to the write tasks.");
             writeTasks.Add(task);

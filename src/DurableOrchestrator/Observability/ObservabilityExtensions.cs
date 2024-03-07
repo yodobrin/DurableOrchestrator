@@ -73,6 +73,22 @@ internal static class ObservabilityExtensions
 
         tracerBuilder.SetSampler(new AlwaysOnSampler());
 
+        tracerBuilder.AddHttpClientInstrumentation(opts =>
+        {
+            opts.EnrichWithHttpRequestMessage = (activity, request) =>
+            {
+                activity.SetTag("http.method", request.Method);
+                activity.SetTag("http.url", request.RequestUri?.ToString());
+            };
+
+            opts.EnrichWithHttpResponseMessage = (activity, response) =>
+            {
+                activity.SetTag("http.method", response.RequestMessage?.Method.ToString());
+                activity.SetTag("http.url", response.RequestMessage?.RequestUri?.ToString());
+                activity.SetTag("http.status_code", response.StatusCode.ToString());
+            };
+        });
+
         // Add additional instrumentation here (e.g. SQL, Entity Framework, etc.)
 
         tracerBuilder.AddConsoleExporter();
