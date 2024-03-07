@@ -8,18 +8,71 @@ services:
     volumes:
       - azurite_data:/data
 
-  otel-collector:
-    image: "otel/opentelemetry-collector-contrib:0.95.0"
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector/config.yaml
+  # Loki is where you can store your logs
+  loki:
+    image: "grafana/loki:2.9.5"
     ports:
-      - 4317:4317
-      - 4318:4318
+      - "3100:3100"
 
-  zipkin:
-    image: openzipkin/zipkin
+  # Tempo is where you can store your traces
+  tempo:
+    image: "grafana/tempo:2.4.0"
     ports:
-      - "9411:9411"
+      - "3200:3200" # tempo http
+      - "4317:4317" # tempo otlp
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./docker/tempo:/etc/tempo
+
+  # Prometheus is where you can store your metrics
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus:/etc/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+
+  ## OpenTelemetry Collector is where you can collect your traces, logs and metrics and send them to the right place
+  otel-collector:
+    image: "otel/opentelemetry-collector-contrib:0.96.0"
+    volumes:
+      - ./docker/otel-collector/config.yaml:/etc/otel-collector/config.yaml
+    ports:
+      - 1888:1888 # pprof extension
+      - 8888:8888 # Prometheus metrics exposed by the collector
+      - 8889:8889 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      - 14317:4317 # otlp gRPC
+      - 14318:4318 # otlp HTTP
+      - 55679:55679 # zpages extension
+    command: ["--config=/etc/otel-collector/config.yaml"]
+    depends_on:
+      - loki
+      - tempo
+      - prometheus
+
+  # Grafana dashboard is where you can visualize everything
+  grafana:
+    image: "grafana/grafana:10.3.4"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/grafana/dashboards:/etc/grafana/dashboards
+      - ./docker/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./docker/grafana/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor traceQLStreaming metricsSummary
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
 
 volumes:
   azurite_data:
