@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "BlobSourceStorageAccountName": "",
+    "BlobTargetStorageAccountName": "",
+    "KEY_VAULT_URL": "",
+    "DOCUMENT_INTELLIGENCE_ENDPOINT": "",
+    "TEXT_ANALYTICS_ENDPOINT": "",
+    "OPENAI_ENDPOINT": "",
+    "OPENAI_MODEL_DEPLOYMENT_NAME": "",
+    "OTLP_EXPORTER_ENDPOINT": "http://localhost:14317"
+  }
+}

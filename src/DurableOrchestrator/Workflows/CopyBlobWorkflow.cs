@@ -4,8 +4,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(CopyBlobWorkflow))]
-public class CopyBlobWorkflow(ObservabilitySettings observabilitySettings)
-    : BaseWorkflow(nameof(CopyBlobWorkflow), observabilitySettings)
+public class CopyBlobWorkflow()
+    : BaseWorkflow(nameof(CopyBlobWorkflow))
 {
     private const string OrchestrationName = "CopyBlobWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";

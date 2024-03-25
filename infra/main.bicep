@@ -15,9 +15,20 @@ param resourceGroupName string = ''
 @description('Tags for all resources.')
 param tags object = {}
 
+@description('Primary location for the Document Intelligence service. Default is westeurope for latest preview support.')
+param documentIntelligenceLocation string = 'westeurope'
+@description('Primary location for the OpenAI service. Default is francecentral for latest preview support.')
+param openAILocation string = 'francecentral'
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var roles = loadJsonContent('./roles.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
+var documentIntelligenceResourceToken = toLower(uniqueString(
+  subscription().id,
+  workloadName,
+  documentIntelligenceLocation
+))
+var openAIResourceToken = toLower(uniqueString(subscription().id, workloadName, openAILocation))
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourceGroup}${workloadName}'
@@ -97,6 +108,64 @@ module textAnalytics './ai_ml/text-analytics.bicep' = {
       {
         principalId: managedIdentity.outputs.principalId
         roleDefinitionId: cognitiveServicesLanguageOwner.id
+      }
+    ]
+  }
+}
+
+resource cognitiveServicesUser 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.cognitiveServicesUser
+}
+
+module documentIntelligence './ai_ml/document-intelligence.bicep' = {
+  name: '${abbrs.documentIntelligence}${documentIntelligenceResourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.documentIntelligence}${documentIntelligenceResourceToken}'
+    location: documentIntelligenceLocation
+    tags: union(tags, {})
+    roleAssignments: [
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesUser.id
+      }
+    ]
+  }
+}
+
+resource cognitiveServicesOpenAIUser 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.cognitiveServicesOpenAIUser
+}
+
+var modelDeploymentName = 'gpt-35-turbo'
+
+module openAI './ai_ml/openai.bicep' = {
+  name: '${abbrs.openAIService}${openAIResourceToken}'
+  scope: resourceGroup
+  params: {
+    name: '${abbrs.openAIService}${openAIResourceToken}'
+    location: openAILocation
+    tags: union(tags, {})
+    deployments: [
+      {
+        name: modelDeploymentName
+        model: {
+          format: 'OpenAI'
+          name: 'gpt-35-turbo'
+          version: '1106'
+        }
+        sku: {
+          name: 'Standard'
+          capacity: 30
+        }
+      }
+    ]
+    roleAssignments: [
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: cognitiveServicesOpenAIUser.id
       }
     ]
   }
@@ -194,6 +263,21 @@ output textAnalyticsInfo object = {
   name: textAnalytics.outputs.name
   endpoint: textAnalytics.outputs.endpoint
   host: textAnalytics.outputs.host
+}
+
+output documentIntelligenceInfo object = {
+  id: documentIntelligence.outputs.id
+  name: documentIntelligence.outputs.name
+  endpoint: documentIntelligence.outputs.endpoint
+  host: documentIntelligence.outputs.host
+}
+
+output openAIInfo object = {
+  id: openAI.outputs.id
+  name: openAI.outputs.name
+  endpoint: openAI.outputs.endpoint
+  host: openAI.outputs.host
+  modelDeploymentName: modelDeploymentName
 }
 
 output logAnalyticsWorkspaceInfo object = {
