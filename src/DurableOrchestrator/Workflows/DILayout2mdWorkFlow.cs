@@ -5,8 +5,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(DILayout2mdWorkFlow))]
-public class DILayout2mdWorkFlow(ObservabilitySettings observabilitySettings)
-    : BaseWorkflow(nameof(SplitPdfWorkflow), observabilitySettings)
+public class DILayout2mdWorkFlow()
+    : BaseWorkflow(nameof(SplitPdfWorkflow))
 {
     private const string OrchestrationName = "DILayout2mdWorkFlow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
@@ -64,7 +64,7 @@ public class DILayout2mdWorkFlow(ObservabilitySettings observabilitySettings)
         var targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
         targetBlobStorageInfo.InjectTracingContext(span.Context);
         targetBlobStorageInfo.Buffer = markDown;
-        
+
         try{
             await context.CallActivityAsync(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
             orchestrationResults.Add($"{OrchestrationName}::Successfully saved markdown file to blob storage.");
@@ -73,7 +73,7 @@ public class DILayout2mdWorkFlow(ObservabilitySettings observabilitySettings)
             log.LogError($"{OrchestrationName}::Failed to save markdown file to blob storage. {ex.Message}");
             orchestrationResults.Add("Failed to save markdown file to blob storage.");
             return orchestrationResults; // Exit the orchestration due to failed saving
-        }        
+        }
 
         return orchestrationResults;
     }

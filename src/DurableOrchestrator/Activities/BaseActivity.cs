@@ -5,9 +5,9 @@ namespace DurableOrchestrator.Activities;
 /// <summary>
 /// Defines the base class for all activity classes.
 /// </summary>
-public abstract class BaseActivity(string activityName, ObservabilitySettings observabilitySettings)
+[ActivitySource(nameof(BaseActivity))]
+public abstract class BaseActivity(string activityName)
 {
-    //protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(activityName, observabilitySettings).Build();
     protected readonly Tracer Tracer = TracerProvider.Default.GetTracer(activityName);
 
     protected TelemetrySpan StartActiveSpan(string name, IObservableContext? input = default)
