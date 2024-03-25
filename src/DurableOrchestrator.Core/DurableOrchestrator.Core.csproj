@@ -4,18 +4,8 @@
     <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Description>Core functionality for building workflows and activities for the Durable Orchestrator.</Description>
-    <AssemblyTitle>Durable Orchestrator Core</AssemblyTitle>
-    <Version>1.0.0</Version>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>DurableOrchestrator.Core</AssemblyName>
-    <PackageId>DurableOrchestrator.Core</PackageId>
-    <PackageTags>Durable Functions;Orchestrator;Workflow;Activities</PackageTags>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
