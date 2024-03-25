@@ -9,9 +9,8 @@ namespace DurableOrchestrator.AI;
 [ActivitySource(nameof(DocumentIntelligenceActivities))]
 public class DocumentIntelligenceActivities(
     DocumentIntelligenceClient client,
-    ObservabilitySettings observabilitySettings,
     ILogger<DocumentIntelligenceActivities> log)
-    : BaseActivity(nameof(DocumentIntelligenceActivities), observabilitySettings)
+    : BaseActivity(nameof(DocumentIntelligenceActivities))
 {
     /// <summary>
     /// Extract the content of the provided document using Azure AI Document Intelligence, output as markdown.

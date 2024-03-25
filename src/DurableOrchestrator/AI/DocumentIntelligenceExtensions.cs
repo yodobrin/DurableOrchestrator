@@ -1,6 +1,6 @@
+// using Azure;
 using Azure.AI.DocumentIntelligence;
 using Azure.Identity;
-// using Azure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DurableOrchestrator.AI;
@@ -15,7 +15,7 @@ internal static class DocumentIntelligenceExtensions
 
             var endpoint = Environment.GetEnvironmentVariable("DOCUMENT_INTELLIGENCE_ENDPOINT");
             // The role of either the user or spn needs to have 'Cognitive User' role to access the Document Intelligence service
-            
+
             // in case keys authorization is preferred, the following code can be used
             // var key = Environment.GetEnvironmentVariable("DI_KEY");
             // AzureKeyCredential credentials = new AzureKeyCredential(key);

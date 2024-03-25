@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.Workflows;
@@ -8,9 +7,8 @@ namespace DurableOrchestrator.Workflows;
 /// </summary>
 /// <param name="workflowName">The name of the workflow for which tracing is to be set up.</param>
 [ActivitySource(nameof(BaseWorkflow))]
-public abstract class BaseWorkflow(string workflowName, ObservabilitySettings observabilitySettings)
+public abstract class BaseWorkflow(string workflowName)
 {
-    //protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(workflowName, observabilitySettings).Build();
     protected readonly Tracer Tracer = TracerProvider.Default.GetTracer(workflowName);
 
     /// <summary>

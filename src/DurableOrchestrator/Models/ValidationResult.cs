@@ -7,7 +7,6 @@ public class ValidationResult
 
     public void AddMessage(string error)
     {
-        // IsValid = false;
         ValidationMessages.Add(error);
     }
 
