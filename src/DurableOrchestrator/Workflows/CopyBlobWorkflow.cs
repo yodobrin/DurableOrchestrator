@@ -1,5 +1,4 @@
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
 
 namespace DurableOrchestrator.Workflows;
@@ -43,7 +42,7 @@ public class CopyBlobWorkflow(ObservabilitySettings observabilitySettings)
 
         // step 3: get blob content to be copied
         var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
-        InjectTracingContext(sourceBlobStorageInfo, span.Context);
+        sourceBlobStorageInfo.InjectTracingContext(span.Context);
 
         var blobContent = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer),
             sourceBlobStorageInfo);
@@ -59,7 +58,7 @@ public class CopyBlobWorkflow(ObservabilitySettings observabilitySettings)
         // step 4: write to another blob
         var targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
         targetBlobStorageInfo.Buffer = blobContent;
-        InjectTracingContext(targetBlobStorageInfo, span.Context);
+        targetBlobStorageInfo.InjectTracingContext(span.Context);
 
         await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
         return orchestrationResults;
@@ -92,7 +91,7 @@ public class CopyBlobWorkflow(ObservabilitySettings observabilitySettings)
         }
 
         var input = ExtractInput(requestBody);
-        InjectTracingContext(input, span.Context);
+        input.InjectTracingContext(span.Context);
 
         // Function input comes from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

@@ -1,6 +1,5 @@
 using DurableOrchestrator.AI;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
 
 namespace DurableOrchestrator.Workflows;
@@ -51,7 +50,7 @@ public class TextAnalyticsWorkflow(ObservabilitySettings observabilitySettings)
         foreach (var request in workFlowInput!.TextAnalyticsRequests!)
         {
             // Fan-out: start a task for each text analytics request
-            InjectTracingContext(request, span.Context);
+            request.InjectTracingContext(span.Context);
             var task = context.CallActivityAsync<string?>(nameof(TextAnalyticsActivities.GetSentiment), request);
             sentimentTasks.Add(task);
         }
@@ -91,7 +90,7 @@ public class TextAnalyticsWorkflow(ObservabilitySettings observabilitySettings)
 
         // step 4: write to another blob
         targetBlobStorageInfo.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
-        InjectTracingContext(targetBlobStorageInfo, span.Context);
+        targetBlobStorageInfo.InjectTracingContext(span.Context);
         await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
 
         return orchestrationResults;
@@ -124,7 +123,7 @@ public class TextAnalyticsWorkflow(ObservabilitySettings observabilitySettings)
         }
 
         var input = ExtractInput(requestBody);
-        InjectTracingContext(input, span.Context);
+        input.InjectTracingContext(span.Context);
 
         // Function input extracted from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

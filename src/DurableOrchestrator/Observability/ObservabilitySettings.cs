@@ -5,7 +5,7 @@ namespace DurableOrchestrator.Observability;
 /// <summary>
 /// Defines the settings for configuring application observability.
 /// </summary>
-public class ObservabilitySettings(string? applicationInsightsConnectionString, string? zipkinEndpointUrl)
+public class ObservabilitySettings(string? applicationInsightsConnectionString, string? zipkinEndpointUrl, string? otlpExporterEndpoint)
 {
     /// <summary>
     /// The configuration key for the Application Insights connection string.
@@ -18,6 +18,11 @@ public class ObservabilitySettings(string? applicationInsightsConnectionString, 
     public const string ZipkinEndpointUrlConfigKey = "ZIPKIN_ENDPOINT_URL";
 
     /// <summary>
+    /// The configuration key for the OpenTelemetry Protocol (OTLP) exporter endpoint.
+    /// </summary>
+    public const string OtlpExporterEndpointConfigKey = "OTLP_EXPORTER_ENDPOINT";
+
+    /// <summary>
     /// Gets the Application Insights connection string.
     /// </summary>
     public string? ApplicationInsightsConnectionString { get; init; } = applicationInsightsConnectionString;
@@ -28,6 +33,11 @@ public class ObservabilitySettings(string? applicationInsightsConnectionString, 
     public string? ZipkinEndpointUrl { get; init; } = zipkinEndpointUrl;
 
     /// <summary>
+    /// Gets the OpenTelemetry Protocol (OTLP) exporter endpoint.
+    /// </summary>
+    public string? OtlpExporterEndpoint { get; init; } = otlpExporterEndpoint;
+
+    /// <summary>
     /// Creates a new instance of the <see cref="ObservabilitySettings"/> class from the specified configuration.
     /// </summary>
     /// <param name="configuration">The <see cref="IConfiguration"/> to use.</param>
@@ -36,6 +46,7 @@ public class ObservabilitySettings(string? applicationInsightsConnectionString, 
     {
         return new ObservabilitySettings(
             configuration[ApplicationInsightsConnectionStringConfigKey],
-            configuration[ZipkinEndpointUrlConfigKey] ?? "http://localhost:9411/api/v2/spans");
+            configuration[ZipkinEndpointUrlConfigKey],
+            configuration[OtlpExporterEndpointConfigKey]);
     }
 }
