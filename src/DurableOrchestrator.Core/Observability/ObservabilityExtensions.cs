@@ -25,7 +25,8 @@ public static class ObservabilityExtensions
     /// </summary>
     /// <param name="observabilityContext">The observability context to inject the span details into.</param>
     /// <param name="spanContext">The span context to inject into the observability context.</param>
-    public static void InjectObservabilityContext(this IObservabilityContext observabilityContext,
+    public static void InjectObservabilityContext(
+        this IObservabilityContext observabilityContext,
         SpanContext spanContext)
     {
         s_propagator.Inject(
@@ -69,8 +70,11 @@ public static class ObservabilityExtensions
     /// <param name="applicationName">The name of the application to use for observability.</param>
     /// <param name="isDevelopment">A value indicating whether the application is running in a development environment.</param>
     /// <returns>The service collection to add services to.</returns>
-    public static IServiceCollection AddObservability(this IServiceCollection services, IConfiguration configuration,
-        string applicationName, bool isDevelopment)
+    public static IServiceCollection AddObservability(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string applicationName,
+        bool isDevelopment)
     {
         var observabilitySettings = ObservabilitySettings.FromConfiguration(configuration);
         services.AddScoped(_ => observabilitySettings);

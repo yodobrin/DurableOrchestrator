@@ -1,14 +1,22 @@
 using System.Text;
+using Azure.Storage.Blobs;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
-using DurableOrchestrator.Models;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry.Trace;
 
-namespace DurableOrchestrator.Storage;
+namespace DurableOrchestrator.AzureStorage;
 
+/// <summary>
+/// Defines a collection of activities for interacting with Azure Blob Storage.
+/// </summary>
+/// <param name="blobServiceClients">The source and target <see cref="BlobServiceClient"/> instances.</param>
+/// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
 [ActivitySource(nameof(BlobStorageActivities))]
 public class BlobStorageActivities(
-    BlobServiceClientsWrapper blobServiceClientsWrapper,
-    ILogger<BlobStorageActivities> log)
+    BlobServiceClients blobServiceClients,
+    ILogger<BlobStorageActivities> logger)
     : BaseActivity(nameof(BlobStorageActivities))
 {
     /// <summary>
@@ -24,7 +32,7 @@ public class BlobStorageActivities(
     {
         using var span = StartActiveSpan(nameof(GetBlobContentAsString), input);
 
-        if (!ValidateInput(input, log, checkContent: false))
+        if (!ValidateInput(input, logger, checkContent: false))
         {
             throw new ArgumentException("Invalid input", nameof(input));
         }
@@ -32,7 +40,7 @@ public class BlobStorageActivities(
         try
         {
             var blobContainerClient =
-                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
@@ -41,7 +49,7 @@ public class BlobStorageActivities(
         }
         catch (Exception ex)
         {
-            log.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
+            logger.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -63,17 +71,17 @@ public class BlobStorageActivities(
     {
         using var span = StartActiveSpan(nameof(GetBlobContentAsBuffer), input);
 
-        if (!ValidateInput(input, log, checkContent: false))
+        if (!ValidateInput(input, logger, checkContent: false))
         {
             throw new ArgumentException("Invalid input", nameof(input));
         }
 
         try
         {
-            log.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
+            logger.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
 
             var blobContainerClient =
-                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
@@ -83,7 +91,7 @@ public class BlobStorageActivities(
         }
         catch (Exception ex)
         {
-            log.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
+            logger.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -102,7 +110,7 @@ public class BlobStorageActivities(
     {
         using var span = StartActiveSpan(nameof(WriteStringToBlob), input);
 
-        if (!ValidateInput(input, log))
+        if (!ValidateInput(input, logger))
         {
             return;
         }
@@ -110,19 +118,19 @@ public class BlobStorageActivities(
         try
         {
             var blobContainerClient =
-                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);
-            log.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
+            logger.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
                 input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
-            log.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
+            logger.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -139,29 +147,29 @@ public class BlobStorageActivities(
     {
         using var span = StartActiveSpan(nameof(WriteBufferToBlob), input);
 
-        if (!ValidateInput(input, log, checkContent: false))
+        if (!ValidateInput(input, logger, checkContent: false))
         {
             return;
         }
 
         try
         {
-            log.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
+            logger.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
             var blobContainerClient =
-                blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
+                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(input.Buffer);
             await blobClient.UploadAsync(stream, overwrite: true);
-            log.LogInformation(
+            logger.LogInformation(
                 $"Successfully uploaded buffer to blob: {input.BlobName} in container: {input.ContainerName}",
                 input.BlobName, input.ContainerName);
         }
         catch (Exception ex)
         {
-            log.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
+            logger.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);

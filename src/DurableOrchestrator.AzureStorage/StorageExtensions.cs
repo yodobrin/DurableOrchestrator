@@ -1,0 +1,49 @@
+using Azure.Identity;
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace DurableOrchestrator.AzureStorage;
+
+/// <summary>
+/// Defines a set of extension methods for configuring Azure Storage services.
+/// </summary>
+public static class StorageExtensions
+{
+    /// <summary>
+    /// Configures the Azure Storage services for the application.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add the Azure Storage services to.</param>
+    /// <param name="configuration">The application configuration to retrieve Azure Storage settings from.</param>
+    /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
+    public static IServiceCollection AddBlobStorage(this IServiceCollection services, IConfiguration configuration)
+    {
+        var storageSettings = StorageSettings.FromConfiguration(configuration);
+        services.AddScoped(_ => storageSettings);
+
+        services.AddSingleton(sp =>
+        {
+            var connectionString = configuration.GetValue<string>("AzureWebJobsStorage");
+            return new BlobServiceClient(connectionString);
+        });
+
+        services.AddSingleton(sp =>
+        {
+            var credentials = sp.GetRequiredService<DefaultAzureCredential>();
+
+            var sourceClient =
+                new BlobServiceClient(
+                    new Uri($"https://{storageSettings.BlobSourceStorageAccountName}.blob.core.windows.net"),
+                    credentials);
+
+            var targetClient =
+                new BlobServiceClient(
+                    new Uri($"https://{storageSettings.BlobTargetStorageAccountName}.blob.core.windows.net"),
+                    credentials);
+
+            return new BlobServiceClients(sourceClient, targetClient);
+        });
+
+        return services;
+    }
+}

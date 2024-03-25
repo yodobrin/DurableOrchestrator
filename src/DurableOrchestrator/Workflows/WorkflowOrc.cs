@@ -1,8 +1,8 @@
+using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.KeyVault;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Storage;
 
 namespace DurableOrchestrator.Workflows;
 
