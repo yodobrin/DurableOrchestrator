@@ -1,5 +1,4 @@
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -9,7 +8,8 @@ namespace DurableOrchestrator.Workflows;
 /// <param name="workflowName">The name of the workflow for which tracing is to be set up.</param>
 public abstract class BaseWorkflow(string workflowName, ObservabilitySettings observabilitySettings)
 {
-    protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(workflowName, observabilitySettings).Build();
+    //protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(workflowName, observabilitySettings).Build();
+    protected readonly Tracer Tracer = TracerProvider.Default.GetTracer(workflowName);
 
     /// <summary>
     /// Validates the inputs provided to a workflow. It checks for null values, mandatory fields, and specific conditions that must be met for the workflow to proceed.
@@ -126,37 +126,7 @@ public abstract class BaseWorkflow(string workflowName, ObservabilitySettings ob
 
     protected TelemetrySpan StartActiveSpan(string name, IObservableContext? input = default)
     {
-        var tracer = ActivityTracerProvider.GetTracer(workflowName);
-        return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, ExtractTracingContext(input)) : tracer.StartActiveSpan(name);
-    }
-
-    protected void InjectTracingContext(IObservableContext activityInput, SpanContext spanContext)
-    {
-        Propagators.DefaultTextMapPropagator.Inject(
-            new PropagationContext(spanContext, Baggage.Current),
-            activityInput.ObservableProperties,
-            (props, key, value) =>
-            {
-                props ??= new Dictionary<string, object>();
-                props.TryAdd(key, value);
-            });
-    }
-
-    protected SpanContext ExtractTracingContext(IObservableContext activityInput)
-    {
-        var propagationContext = Propagators.DefaultTextMapPropagator.Extract(
-            default,
-            activityInput.ObservableProperties,
-            (props, key) =>
-            {
-                if (!props.TryGetValue(key, out var value) || value.ToString() is null)
-                {
-                    return [];
-                }
-
-                return [value.ToString()];
-            });
-
-        return new SpanContext(propagationContext.ActivityContext);
+        var tracer = Tracer; //ActivityTracerProvider.GetTracer(workflowName);
+        return input != default ? tracer.StartActiveSpan(name, SpanKind.Internal, input.ExtractTracingContext()) : tracer.StartActiveSpan(name);
     }
 }

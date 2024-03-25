@@ -1,7 +1,6 @@
-using iText.Kernel.Pdf;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
+using iText.Kernel.Pdf;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -34,20 +33,21 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         var validationResult = ValidateWorkFlowInputs(workFlowInput!);
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult
-                .ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError(
-                $"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
+            log.LogError($"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
-        
+
         orchestrationResults.Add("SplitPdfWorkflow::WorkFlowInput is valid.");
         log.LogInformation("SplitPdfWorkflow::WorkFlowInput is valid.");
 
         // step 3:
         // read the source file from blob storage using the input
         var splitResults = new List<byte[]>();
-        byte[] sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), workFlowInput.SourceBlobStorageInfo!);
+        var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
+        sourceBlobStorageInfo.InjectTracingContext(span.Context);
+
+        var sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), sourceBlobStorageInfo);
 
         if (sourceFile == null)
         {
@@ -57,7 +57,8 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         }
 
         // split the PDF file into individual pages
-        try{
+        try
+        {
             using var pdfReader = new PdfReader(new MemoryStream(sourceFile));
             using var pdfDocument = new PdfDocument(pdfReader);
 
@@ -73,7 +74,7 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
                     pdfDest.Close(); // Ensure closure to flush content to stream
 
                     splitResults.Add(writeMemoryStream.ToArray());
-                    
+
                 }
             }
 
@@ -82,13 +83,13 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         {
             log.LogError($"SplitPdfWorkflow::PDF processing error: {ex.Message}, stack: {ex.StackTrace}, Details: {ex.InnerException}");
             orchestrationResults.Add($"PDF processing error: {ex.Message}");
-             return orchestrationResults;
+            return orchestrationResults;
         }
         catch (Exception ex)
         {
             log.LogError($"SplitPdfWorkflow::Unexpected error: {ex.Message}, StackTrace: {ex.StackTrace}");
             orchestrationResults.Add($"Unexpected error: {ex.Message}");
-             return orchestrationResults;
+            return orchestrationResults;
         }
         // step 4: write the split PDF files to blob storage
         var writeTasks = new List<Task>();
@@ -101,13 +102,16 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
                 BlobName = $"{workFlowInput.TargetBlobStorageInfo!.BlobName}_{i + 1}.pdf",
                 Buffer = splitResults[i]
             };
+
+            blobStorageInfo.InjectTracingContext(span.Context);
+
             var task = context.CallActivityAsync(nameof(BlobStorageActivities.WriteBufferToBlob), blobStorageInfo);
             orchestrationResults.Add($"SplitPdfWorkflow:: Added split pdf: {blobStorageInfo.BlobName} to the write tasks.");
             writeTasks.Add(task);
         }
         // Fan-out: start all write operations concurrently and wait for all of them to complete
         await Task.WhenAll(writeTasks);
-    
+
 
         orchestrationResults.Add("SplitPdfWorkflow::Split completed.");
 
@@ -141,9 +145,8 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         }
 
         var input = ExtractInput(requestBody);
-        InjectTracingContext(input, span.Context);
+        input.InjectTracingContext(span.Context);
 
-        
         // Function input extracted from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
 

@@ -1,7 +1,6 @@
 using Azure.Identity;
 using DurableOrchestrator.AI;
 using DurableOrchestrator.KeyVault;
-using DurableOrchestrator.Observability;
 using DurableOrchestrator.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,8 +46,12 @@ var host = new HostBuilder()
 
         // Pass IConfiguration to AddBlobStorage where it is needed to read BlobSource and BlobTarget configurations
         services.AddBlobStorage(builder.Configuration);
+        // Required for most activities, reads and write to blob storage
         services.AddBlobStorageClients(builder.Configuration);
+        // Required if Text Analytics is used
         services.AddTextAnalytics();
+        // Required if Document Intelligence is used
+        services.AddDocumentIntelligence();
     })
     .Build();
 

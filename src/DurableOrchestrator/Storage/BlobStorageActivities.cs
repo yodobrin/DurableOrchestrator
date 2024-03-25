@@ -1,7 +1,6 @@
 using System.Text;
 using DurableOrchestrator.Activities;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.Observability;
 
 namespace DurableOrchestrator.Storage;
 
@@ -141,7 +140,7 @@ public class BlobStorageActivities(
     [Function(nameof(WriteBufferToBlob))]
     public async Task WriteBufferToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
     {
-        using var span = StartActiveSpan(nameof(WriteStringToBlob), input);
+        using var span = StartActiveSpan(nameof(WriteBufferToBlob), input);
 
         if (!ValidateInput(input, log, checkContent: false))
         {
