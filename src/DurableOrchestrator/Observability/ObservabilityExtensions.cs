@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using DurableOrchestrator.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -14,12 +14,12 @@ namespace DurableOrchestrator.Observability;
 /// </summary>
 internal static class ObservabilityExtensions
 {
-    internal static readonly TextMapPropagator s_propogator = new CompositeTextMapPropagator(
+    internal static readonly TextMapPropagator s_propagator = new CompositeTextMapPropagator(
         new List<TextMapPropagator> { new TraceContextPropagator(), new BaggagePropagator() });
 
     internal static void InjectTracingContext(this IObservableContext observableContext, SpanContext spanContext)
     {
-        s_propogator.Inject(
+        s_propagator.Inject(
             new PropagationContext(spanContext, Baggage.Current),
             observableContext.ObservableProperties,
             (props, key, value) =>
@@ -31,7 +31,7 @@ internal static class ObservabilityExtensions
 
     internal static SpanContext ExtractTracingContext(this IObservableContext observableContext)
     {
-        var propagationContext = s_propogator.Extract(
+        var propagationContext = s_propagator.Extract(
             default,
             observableContext.ObservableProperties,
             (props, key) =>
@@ -51,15 +51,17 @@ internal static class ObservabilityExtensions
     /// Configures the application logging and telemetry.
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
-    /// <param name="builder">The host application builder.</param>
+    /// <param name="configuration">The configuration to use for observability settings.</param>
+    /// <param name="applicationName">The name of the application to use for observability.</param>
+    /// <param name="isDevelopment">A value indicating whether the application is running in a development environment.</param>
     /// <returns>The service collection to add services to.</returns>
-    internal static IServiceCollection AddObservability(this IServiceCollection services, HostBuilderContext builder)
+    internal static IServiceCollection AddObservability(this IServiceCollection services, IConfiguration configuration, string applicationName, bool isDevelopment)
     {
-        var observabilitySettings = ObservabilitySettings.FromConfiguration(builder.Configuration);
+        var observabilitySettings = ObservabilitySettings.FromConfiguration(configuration);
         services.AddScoped(_ => observabilitySettings);
 
-        services.AddLogging(builder, observabilitySettings)
-            .AddOpenTelemetry(builder, observabilitySettings);
+        services.AddLogging(applicationName, isDevelopment, observabilitySettings)
+            .AddOpenTelemetry(applicationName, observabilitySettings);
 
         return services;
     }
@@ -126,14 +128,15 @@ internal static class ObservabilityExtensions
 
     private static IServiceCollection AddLogging(
         this IServiceCollection services,
-        HostBuilderContext builder,
+        string applicationName,
+        bool isDevelopment,
         ObservabilitySettings observabilitySettings)
     {
         services.AddLogging(logBuilder =>
         {
             logBuilder.AddOpenTelemetry(otOpts =>
             {
-                otOpts.SetResourceBuilder(GetResourceBuilder(builder.HostingEnvironment.ApplicationName));
+                otOpts.SetResourceBuilder(GetResourceBuilder(applicationName));
 
                 otOpts.IncludeFormattedMessage = true;
 
@@ -152,7 +155,7 @@ internal static class ObservabilityExtensions
             });
 
             logBuilder.AddConsole();
-            logBuilder.SetMinimumLevel(builder.HostingEnvironment.IsDevelopment()
+            logBuilder.SetMinimumLevel(isDevelopment
                 ? LogLevel.Information
                 : LogLevel.Warning);
         });
@@ -162,7 +165,7 @@ internal static class ObservabilityExtensions
 
     private static IServiceCollection AddOpenTelemetry(
         this IServiceCollection services,
-        HostBuilderContext builder,
+        string applicationName,
         ObservabilitySettings observabilitySettings)
     {
         AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
@@ -171,18 +174,18 @@ internal static class ObservabilityExtensions
             .WithTracing(tracerBuilder =>
             {
                 tracerBuilder.ConfigureTracerBuilder(
-                    builder.HostingEnvironment.ApplicationName,
+                    applicationName,
                     observabilitySettings);
             })
             .WithMetrics(metricsBuilder =>
             {
                 metricsBuilder.ConfigureMetricsBuilder(
-                    builder.HostingEnvironment.ApplicationName,
+                    applicationName,
                     observabilitySettings);
             });
 
-        services.AddSingleton(new ActivitySource(builder.HostingEnvironment.ApplicationName));
-        services.AddSingleton(TracerProvider.Default.GetTracer(builder.HostingEnvironment.ApplicationName));
+        services.AddSingleton(new ActivitySource(applicationName));
+        services.AddSingleton(TracerProvider.Default.GetTracer(applicationName));
 
         return services;
     }
