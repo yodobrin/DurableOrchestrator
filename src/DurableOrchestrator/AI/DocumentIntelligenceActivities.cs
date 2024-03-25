@@ -9,9 +9,8 @@ namespace DurableOrchestrator.AI;
 [ActivitySource(nameof(DocumentIntelligenceActivities))]
 public class DocumentIntelligenceActivities(
     DocumentIntelligenceClient client,
-    ObservabilitySettings observabilitySettings,
     ILogger<DocumentIntelligenceActivities> log)
-    : BaseActivity(nameof(DocumentIntelligenceActivities), observabilitySettings)
+    : BaseActivity(nameof(DocumentIntelligenceActivities))
 {
     /// <summary>
     /// Extract the content of the provided document using Azure AI Document Intelligence, output as markdown.
@@ -20,12 +19,12 @@ public class DocumentIntelligenceActivities(
     /// <param name="executionContext">The function execution context.</param>
     /// <returns>The document analysis result as a string, or null if an error occurs.</returns>
     [Function(nameof(AnalyzeDocument2Markdown))]
-    public async Task<byte []> AnalyzeDocument2Markdown(
+    public async Task<byte[]> AnalyzeDocument2Markdown(
         [ActivityTrigger] DocumentIntelligenceRequest input,
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(AnalyzeDocument2Markdown), input);
-        
+
         if (!ValidateInput(input, log))
         {
             // throw an exception to indicate that the input is invalid
@@ -42,14 +41,14 @@ public class DocumentIntelligenceActivities(
                 };
                 break;
             case ContentType.InMemory:
-                content = new AnalyzeDocumentContent () { Base64Source = BinaryData.FromBytes(input.Content)};                
+                content = new AnalyzeDocumentContent() { Base64Source = BinaryData.FromBytes(input.Content) };
                 break;
             default:
                 throw new ArgumentException("AnalyzeDocument2Markdown::Invalid ContentType.");
         }
         try
         {
-            Operation<AnalyzeResult> operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed,input.ModelId, content, outputContentFormat: ContentFormat.Markdown );
+            Operation<AnalyzeResult> operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, input.ModelId, content, outputContentFormat: ContentFormat.Markdown);
             AnalyzeResult result = operation.Value;
             return Encoding.UTF8.GetBytes(result.Content.ToString());
         }
@@ -108,5 +107,4 @@ public class DocumentIntelligenceActivities(
 
         return true;
     }
-
 }

@@ -41,7 +41,10 @@ var host = new HostBuilder()
         });
 
         // No changes needed here for KeyVault and Observability
-        services.AddObservability(builder);
+        services.AddObservability(
+            builder.Configuration,
+            builder.HostingEnvironment.ApplicationName,
+            builder.HostingEnvironment.IsDevelopment());
         services.AddKeyVault();
 
         // Pass IConfiguration to AddBlobStorage where it is needed to read BlobSource and BlobTarget configurations
@@ -52,6 +55,8 @@ var host = new HostBuilder()
         services.AddTextAnalytics();
         // Required if Document Intelligence is used
         services.AddDocumentIntelligence();
+        // Required if OpenAI is used
+        services.AddOpenAI(builder.Configuration);
     })
     .Build();
 

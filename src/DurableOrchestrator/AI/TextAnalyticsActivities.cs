@@ -7,9 +7,8 @@ namespace DurableOrchestrator.AI;
 [ActivitySource(nameof(TextAnalyticsActivities))]
 public class TextAnalyticsActivities(
     TextAnalyticsClient client,
-    ObservabilitySettings observabilitySettings,
     ILogger<TextAnalyticsActivities> log)
-    : BaseActivity(nameof(TextAnalyticsActivities), observabilitySettings)
+    : BaseActivity(nameof(TextAnalyticsActivities))
 {
     /// <summary>
     /// Analyzes the sentiment of the provided text using Azure AI Text Analytics.
