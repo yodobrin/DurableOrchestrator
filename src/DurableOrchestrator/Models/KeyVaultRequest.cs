@@ -1,6 +1,8 @@
+using DurableOrchestrator.Core.Observability;
+
 namespace DurableOrchestrator.Models;
 
-public class KeyVaultRequest : IObservableContext
+public class KeyVaultRequest : IObservabilityContext
 {
     [JsonPropertyName("secretName")]
     public string? SecretName { get; set; }
@@ -9,5 +11,5 @@ public class KeyVaultRequest : IObservableContext
     public IEnumerable<string>? SecretNames { get; set; }
 
     [JsonPropertyName("observableProperties")]
-    public Dictionary<string, object> ObservableProperties { get; set; } = new();
+    public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
 }

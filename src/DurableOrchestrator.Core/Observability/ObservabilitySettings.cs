@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace DurableOrchestrator.Observability;
+namespace DurableOrchestrator.Core.Observability;
 
 /// <summary>
 /// Defines the settings for configuring application observability.

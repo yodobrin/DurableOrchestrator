@@ -1,6 +1,8 @@
+using DurableOrchestrator.Core.Observability;
+
 namespace DurableOrchestrator.Models;
 
-public class DocumentIntelligenceRequest : IObservableContext
+public class DocumentIntelligenceRequest : IObservabilityContext
 {
     [JsonPropertyName("modelId")]
     public string ModelId { get; set; } = string.Empty;
@@ -15,7 +17,7 @@ public class DocumentIntelligenceRequest : IObservableContext
     public byte[] Content { get; set; } = Array.Empty<byte>();
 
     [JsonPropertyName("observableProperties")]
-    public Dictionary<string, object> ObservableProperties { get; set; } = new();
+    public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
 }
 
 public enum ContentType

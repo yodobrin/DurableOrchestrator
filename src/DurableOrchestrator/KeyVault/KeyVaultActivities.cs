@@ -1,5 +1,6 @@
 using Azure.Security.KeyVault.Secrets;
-using DurableOrchestrator.Activities;
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.KeyVault;

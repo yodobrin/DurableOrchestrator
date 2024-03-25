@@ -1,5 +1,6 @@
 using Azure.Identity;
 using DurableOrchestrator.AI;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.KeyVault;
 using DurableOrchestrator.Storage;
 using Microsoft.Extensions.Configuration;

@@ -1,5 +1,7 @@
 using DurableOrchestrator.Models;
 using DurableOrchestrator.AI;
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Storage;
 
 namespace DurableOrchestrator.Workflows;
@@ -24,11 +26,11 @@ public class DILayout2mdWorkFlow()
 
         var orchestrationResults = new List<string>();
         // step 2: validate the input
-        var validationResult = ValidateWorkFlowInputs(workFlowInput!);
+        var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError($"{OrchestrationName}::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            log.LogError($"{OrchestrationName}::WorkFlowInput is invalid. {validationResult}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
@@ -36,7 +38,7 @@ public class DILayout2mdWorkFlow()
         log.LogInformation($"{OrchestrationName}::WorkFlowInput is valid.");
         // step 3: read source file into buffer, assuming the file to read exists in the SourceBlobStorageInfo
         var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
-        sourceBlobStorageInfo.InjectTracingContext(span.Context);
+        sourceBlobStorageInfo.InjectObservabilityContext(span.Context);
 
         var sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), sourceBlobStorageInfo);
         if (sourceFile == null)
@@ -62,7 +64,7 @@ public class DILayout2mdWorkFlow()
         }
         // step 5: save the markdown file to blob storage
         var targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
-        targetBlobStorageInfo.InjectTracingContext(span.Context);
+        targetBlobStorageInfo.InjectObservabilityContext(span.Context);
         targetBlobStorageInfo.Buffer = markDown;
 
         try{
@@ -104,8 +106,8 @@ public class DILayout2mdWorkFlow()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput(requestBody);
-        input.InjectTracingContext(span.Context);
+        var input = ExtractInput<WorkFlowInput>(requestBody);
+        input.InjectObservabilityContext(span.Context);
 
         // Function input extracted from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

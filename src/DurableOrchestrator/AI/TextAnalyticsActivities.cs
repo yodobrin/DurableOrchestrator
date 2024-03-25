@@ -1,5 +1,6 @@
 using Azure.AI.TextAnalytics;
-using DurableOrchestrator.Activities;
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.AI;

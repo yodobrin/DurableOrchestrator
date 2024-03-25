@@ -1,3 +1,5 @@
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.KeyVault;
 using DurableOrchestrator.Models;
 using DurableOrchestrator.Storage;
@@ -23,11 +25,11 @@ public class WorkflowOrc()
 
         var orchestrationResults = new List<string>();
 
-        var validationResult = ValidateWorkFlowInputs(workFlowInput);
+        var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(validationResult.ValidationMessages);
-            log.LogError($"WorkflowOrc::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            log.LogError($"WorkflowOrc::WorkFlowInput is invalid. {validationResult}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
@@ -40,7 +42,7 @@ public class WorkflowOrc()
             var secretName = workFlowInput.Name;
 
             var secretInput = new KeyVaultRequest { SecretName = secretName };
-            secretInput.InjectTracingContext(span.Context);
+            secretInput.InjectObservabilityContext(span.Context);
 
             var secretValue = await context.CallActivityAsync<string>(
                 nameof(KeyVaultActivities.GetSecretFromKeyVault),
@@ -56,7 +58,7 @@ public class WorkflowOrc()
 
             // Update BlobStorageInfo with the secret value
             workFlowInput.TargetBlobStorageInfo!.Content = secretValue;
-            workFlowInput.TargetBlobStorageInfo!.InjectTracingContext(span.Context);
+            workFlowInput.TargetBlobStorageInfo!.InjectObservabilityContext(span.Context);
 
             // Step 2: Write the secret value to blob storage
             await context.CallActivityAsync(
@@ -70,7 +72,7 @@ public class WorkflowOrc()
             orchestrationResults.Add($"Error: {ex.Message}");
         }
 
-        workFlowInput.InjectTracingContext(span.Context);
+        workFlowInput.InjectObservabilityContext(span.Context);
         
         var splitPdfResult = await context.CallSubOrchestratorAsync<List<string>>(nameof(SplitPdfWorkflow), workFlowInput);
         orchestrationResults.AddRange(splitPdfResult);
@@ -96,8 +98,8 @@ public class WorkflowOrc()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput(requestBody);
-        input.InjectTracingContext(span.Context);
+        var input = ExtractInput<WorkFlowInput>(requestBody);
+        input.InjectObservabilityContext(span.Context);
 
         // Function input comes from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

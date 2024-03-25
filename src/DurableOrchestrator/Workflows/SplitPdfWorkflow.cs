@@ -1,3 +1,5 @@
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Models;
 using DurableOrchestrator.Storage;
 using iText.Kernel.Pdf;
@@ -30,11 +32,11 @@ public class SplitPdfWorkflow()
         var orchestrationResults = new List<string>();
 
         // step 2: validate the input
-        var validationResult = ValidateWorkFlowInputs(workFlowInput!);
+        var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError($"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            log.LogError($"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
@@ -45,7 +47,7 @@ public class SplitPdfWorkflow()
         // read the source file from blob storage using the input
         var splitResults = new List<byte[]>();
         var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
-        sourceBlobStorageInfo.InjectTracingContext(span.Context);
+        sourceBlobStorageInfo.InjectObservabilityContext(span.Context);
 
         var sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), sourceBlobStorageInfo);
 
@@ -103,7 +105,7 @@ public class SplitPdfWorkflow()
                 Buffer = splitResults[i]
             };
 
-            blobStorageInfo.InjectTracingContext(span.Context);
+            blobStorageInfo.InjectObservabilityContext(span.Context);
 
             var task = context.CallActivityAsync(nameof(BlobStorageActivities.WriteBufferToBlob), blobStorageInfo);
             orchestrationResults.Add($"SplitPdfWorkflow:: Added split pdf: {blobStorageInfo.BlobName} to the write tasks.");
@@ -144,8 +146,8 @@ public class SplitPdfWorkflow()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput(requestBody);
-        input.InjectTracingContext(span.Context);
+        var input = ExtractInput<WorkFlowInput>(requestBody);
+        input.InjectObservabilityContext(span.Context);
 
         // Function input extracted from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

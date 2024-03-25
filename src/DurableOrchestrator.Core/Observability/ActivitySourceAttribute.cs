@@ -1,4 +1,4 @@
-namespace DurableOrchestrator.Observability;
+namespace DurableOrchestrator.Core.Observability;
 
 /// <summary>
 /// Defines an attribute that is used to mark a class as an activity source for OpenTelemetry.
@@ -23,7 +23,8 @@ public class ActivitySourceAttribute(string name) : Attribute
 
         foreach (var activitySourceType in activitySourceTypes)
         {
-            if (activitySourceType.GetCustomAttributes(typeof(ActivitySourceAttribute), true).FirstOrDefault() is ActivitySourceAttribute activitySourceAttribute)
+            if (activitySourceType.GetCustomAttributes(typeof(ActivitySourceAttribute), true).FirstOrDefault() is
+                ActivitySourceAttribute activitySourceAttribute)
             {
                 yield return activitySourceAttribute.Name;
             }

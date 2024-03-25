@@ -1,4 +1,6 @@
 using DurableOrchestrator.AI;
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Models;
 using DurableOrchestrator.Storage;
 
@@ -30,13 +32,13 @@ public class TextAnalyticsWorkflow()
         var orchestrationResults = new List<string>();
 
         // step 2: validate the input
-        var validationResult = ValidateWorkFlowInputs(workFlowInput!);
+        var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(validationResult
                 .ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
             log.LogError(
-                $"TextAnalyticsWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+                $"TextAnalyticsWorkflow::WorkFlowInput is invalid. {validationResult}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
@@ -50,7 +52,7 @@ public class TextAnalyticsWorkflow()
         foreach (var request in workFlowInput!.TextAnalyticsRequests!)
         {
             // Fan-out: start a task for each text analytics request
-            request.InjectTracingContext(span.Context);
+            request.InjectObservabilityContext(span.Context);
             var task = context.CallActivityAsync<string?>(nameof(TextAnalyticsActivities.GetSentiment), request);
             sentimentTasks.Add(task);
         }
@@ -90,7 +92,7 @@ public class TextAnalyticsWorkflow()
 
         // step 4: write to another blob
         targetBlobStorageInfo.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
-        targetBlobStorageInfo.InjectTracingContext(span.Context);
+        targetBlobStorageInfo.InjectObservabilityContext(span.Context);
         await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
 
         return orchestrationResults;
@@ -122,8 +124,8 @@ public class TextAnalyticsWorkflow()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput(requestBody);
-        input.InjectTracingContext(span.Context);
+        var input = ExtractInput<WorkFlowInput>(requestBody);
+        input.InjectObservabilityContext(span.Context);
 
         // Function input extracted from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

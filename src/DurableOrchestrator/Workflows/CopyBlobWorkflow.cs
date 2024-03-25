@@ -1,3 +1,5 @@
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Models;
 using DurableOrchestrator.Storage;
 
@@ -29,11 +31,11 @@ public class CopyBlobWorkflow()
         var orchestrationResults = new List<string>();
 
         // step 2: validate the input
-        var validationResult = ValidateWorkFlowInputs(workFlowInput);
+        var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(validationResult.ValidationMessages);
-            log.LogError($"CopyBlobWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            log.LogError($"CopyBlobWorkflow::WorkFlowInput is invalid. {validationResult}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
@@ -42,7 +44,7 @@ public class CopyBlobWorkflow()
 
         // step 3: get blob content to be copied
         var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
-        sourceBlobStorageInfo.InjectTracingContext(span.Context);
+        sourceBlobStorageInfo.InjectObservabilityContext(span.Context);
 
         var blobContent = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer),
             sourceBlobStorageInfo);
@@ -58,7 +60,7 @@ public class CopyBlobWorkflow()
         // step 4: write to another blob
         var targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
         targetBlobStorageInfo.Buffer = blobContent;
-        targetBlobStorageInfo.InjectTracingContext(span.Context);
+        targetBlobStorageInfo.InjectObservabilityContext(span.Context);
 
         await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
         return orchestrationResults;
@@ -90,8 +92,8 @@ public class CopyBlobWorkflow()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput(requestBody);
-        input.InjectTracingContext(span.Context);
+        var input = ExtractInput<WorkFlowInput>(requestBody);
+        input.InjectObservabilityContext(span.Context);
 
         // Function input comes from the request content.
         var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);

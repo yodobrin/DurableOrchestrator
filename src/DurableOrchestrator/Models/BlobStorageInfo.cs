@@ -1,6 +1,8 @@
+using DurableOrchestrator.Core.Observability;
+
 namespace DurableOrchestrator.Models;
 
-public class BlobStorageInfo : IObservableContext
+public class BlobStorageInfo : IObservabilityContext
 {
     [JsonPropertyName("storageAccountName")]
     public string StorageAccountName { get; set; } = string.Empty;
@@ -21,5 +23,5 @@ public class BlobStorageInfo : IObservableContext
     public byte[] Buffer { get; set; } = Array.Empty<byte>();
 
     [JsonPropertyName("observableProperties")]
-    public Dictionary<string, object> ObservableProperties { get; set; } = new();
+    public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
 }

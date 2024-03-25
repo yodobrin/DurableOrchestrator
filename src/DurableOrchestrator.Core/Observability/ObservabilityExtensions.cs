@@ -1,27 +1,36 @@
 using System.Diagnostics;
 using Azure.Monitor.OpenTelemetry.Exporter;
-using DurableOrchestrator.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
-namespace DurableOrchestrator.Observability;
+namespace DurableOrchestrator.Core.Observability;
 
 /// <summary>
 /// Defines a set of extension methods for extending the functionality of application observability.
 /// </summary>
-internal static class ObservabilityExtensions
+public static class ObservabilityExtensions
 {
-    internal static readonly TextMapPropagator s_propagator = new CompositeTextMapPropagator(
+    private static readonly TextMapPropagator s_propagator = new CompositeTextMapPropagator(
         new List<TextMapPropagator> { new TraceContextPropagator(), new BaggagePropagator() });
 
-    internal static void InjectTracingContext(this IObservableContext observableContext, SpanContext spanContext)
+    /// <summary>
+    /// Injects the details of the specified span into the <paramref name="observabilityContext" />.
+    /// </summary>
+    /// <param name="observabilityContext">The observability context to inject the span details into.</param>
+    /// <param name="spanContext">The span context to inject into the observability context.</param>
+    public static void InjectObservabilityContext(this IObservabilityContext observabilityContext,
+        SpanContext spanContext)
     {
         s_propagator.Inject(
             new PropagationContext(spanContext, Baggage.Current),
-            observableContext.ObservableProperties,
+            observabilityContext.ObservabilityProperties,
             (props, key, value) =>
             {
                 props ??= new Dictionary<string, object>();
@@ -29,11 +38,16 @@ internal static class ObservabilityExtensions
             });
     }
 
-    internal static SpanContext ExtractTracingContext(this IObservableContext observableContext)
+    /// <summary>
+    /// Extracts the details of a span from the <paramref name="observabilityContext" />.
+    /// </summary>
+    /// <param name="observabilityContext">The observability context to extract the span details from.</param>
+    /// <returns>The details of the span extracted from the observability context.</returns>
+    public static SpanContext ExtractObservabilityContext(this IObservabilityContext observabilityContext)
     {
         var propagationContext = s_propagator.Extract(
             default,
-            observableContext.ObservableProperties,
+            observabilityContext.ObservabilityProperties,
             (props, key) =>
             {
                 if (!props.TryGetValue(key, out var value) || value.ToString() is null)
@@ -55,7 +69,8 @@ internal static class ObservabilityExtensions
     /// <param name="applicationName">The name of the application to use for observability.</param>
     /// <param name="isDevelopment">A value indicating whether the application is running in a development environment.</param>
     /// <returns>The service collection to add services to.</returns>
-    internal static IServiceCollection AddObservability(this IServiceCollection services, IConfiguration configuration, string applicationName, bool isDevelopment)
+    public static IServiceCollection AddObservability(this IServiceCollection services, IConfiguration configuration,
+        string applicationName, bool isDevelopment)
     {
         var observabilitySettings = ObservabilitySettings.FromConfiguration(configuration);
         services.AddScoped(_ => observabilitySettings);
@@ -66,7 +81,7 @@ internal static class ObservabilityExtensions
         return services;
     }
 
-    internal static TracerProviderBuilder ConfigureTracerBuilder(
+    private static TracerProviderBuilder ConfigureTracerBuilder(
         this TracerProviderBuilder tracerBuilder,
         string serviceName,
         ObservabilitySettings observabilitySettings)
@@ -190,14 +205,14 @@ internal static class ObservabilityExtensions
         return services;
     }
 
-    private static void ConfigureMetricsBuilder(
+    private static MeterProviderBuilder ConfigureMetricsBuilder(
         this MeterProviderBuilder metricsBuilder,
         string serviceName,
         ObservabilitySettings observabilitySettings)
     {
         metricsBuilder.SetResourceBuilder(GetResourceBuilder(serviceName));
 
-        AddMeters(metricsBuilder);
+        AddMeterSources(metricsBuilder);
         // Add additional external meters here
 
         metricsBuilder.AddConsoleExporter();
@@ -214,6 +229,8 @@ internal static class ObservabilityExtensions
                 opts.ConnectionString = observabilitySettings.ApplicationInsightsConnectionString;
             });
         }
+
+        return metricsBuilder;
     }
 
     private static ResourceBuilder GetResourceBuilder(string serviceName)
@@ -234,11 +251,11 @@ internal static class ObservabilityExtensions
         return builder;
     }
 
-    private static MeterProviderBuilder AddMeters(this MeterProviderBuilder builder)
+    private static MeterProviderBuilder AddMeterSources(this MeterProviderBuilder builder)
     {
-        foreach (var meter in MeterAttribute.GetMeterNames())
+        foreach (var meterSource in MeterSourceAttribute.GetMeterSourceNames())
         {
-            builder.AddMeter(meter);
+            builder.AddMeter(meterSource);
         }
 
         return builder;

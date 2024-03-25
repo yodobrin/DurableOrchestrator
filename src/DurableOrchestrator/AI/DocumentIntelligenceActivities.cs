@@ -1,8 +1,9 @@
 using Azure.AI.DocumentIntelligence;
-using DurableOrchestrator.Activities;
 using DurableOrchestrator.Models;
 using Azure;
 using System.Text;
+using DurableOrchestrator.Core;
+using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.AI;
 
