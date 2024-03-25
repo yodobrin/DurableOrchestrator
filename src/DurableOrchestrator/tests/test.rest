@@ -69,7 +69,7 @@ POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "sentiments2.22.944.json",
+    "blobName": "sentiments3.07.1302.json",
     "containerName": "target1container"
   },
   "textAnalyticsRequests": [
@@ -192,7 +192,7 @@ POST http://localhost:7071/api/SplitPdfWorkflow_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "split_2.22.944_sample.pdf",
+    "blobName": "split_3.22.944_sample.pdf",
     "containerName": "splitcontainer"
   }  
 }
@@ -212,7 +212,27 @@ POST http://localhost:7071/api/WorkflowOrc_HttpStart
   },
   "targetBlobStorageInfo": {
     "storageAccountName": "ydinventorylogs",
-    "blobName": "whatasecret22.2.943.txt",
+    "blobName": "whatasecret22.3.943.txt",
     "containerName": "targetcontainer"
+  }
+}
+
+### calling DI
+
+POST http://localhost:7071/api/DILayout2mdWorkFlow_HttpStart
+
+{
+  "name": "samplesec",
+  "source": "KeyVault",
+  "destination": "BlobStorage",
+  "sourceBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "Invoice_1.pdf",
+    "containerName": "docintelin"
+  },
+  "targetBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "output2.md",
+    "containerName": "docintelout"
   }
 }
