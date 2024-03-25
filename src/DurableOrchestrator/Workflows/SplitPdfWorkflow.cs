@@ -33,10 +33,8 @@ public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
         var validationResult = ValidateWorkFlowInputs(workFlowInput!);
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult
-                .ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError(
-                $"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
+            orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
+            log.LogError($"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult.GetValidationMessages()}");
             return orchestrationResults; // Exit the orchestration due to validation errors
         }
 
