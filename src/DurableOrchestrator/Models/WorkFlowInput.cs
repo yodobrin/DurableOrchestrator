@@ -1,6 +1,5 @@
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core;
-using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Models;
 
