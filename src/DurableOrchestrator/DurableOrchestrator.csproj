@@ -22,6 +22,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\DurableOrchestrator.AzureKeyVault\DurableOrchestrator.AzureKeyVault.csproj" />
     <ProjectReference Include="..\DurableOrchestrator.AzureStorage\DurableOrchestrator.AzureStorage.csproj" />
     <ProjectReference Include="..\DurableOrchestrator.Core\DurableOrchestrator.Core.csproj" />
   </ItemGroup>
@@ -38,7 +39,7 @@
     <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
   </ItemGroup>
     <ItemGroup>
-      <Folder Include="Storage\" />
+      <Folder Include="KeyVault\" />
     </ItemGroup>
   <Target Name="CopyGrpcNativeAssetsToOutDir" AfterTargets="Build"> <ItemGroup> <NativeAssetToCopy Condition="$([MSBuild]::IsOSPlatform('OSX'))" Include="$(OutDir)runtimes/osx-arm64/native/*" /> </ItemGroup> <Copy SourceFiles="@(NativeAssetToCopy)" DestinationFolder="$(OutDir).azurefunctions/runtimes/osx-arm64/native" /> </Target>
 </Project>

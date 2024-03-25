@@ -1,14 +1,21 @@
 using Azure.Security.KeyVault.Secrets;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
-using DurableOrchestrator.Models;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry.Trace;
 
-namespace DurableOrchestrator.KeyVault;
+namespace DurableOrchestrator.AzureKeyVault;
 
+/// <summary>
+/// Defines a collection of activities for interacting with Azure Key Vault.
+/// </summary>
+/// <param name="client">The <see cref="SecretClient"/> instance used to interact with Azure Key Vault.</param>
+/// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
 [ActivitySource(nameof(KeyVaultActivities))]
 public class KeyVaultActivities(
     SecretClient client,
-    ILogger<KeyVaultActivities> log)
+    ILogger<KeyVaultActivities> logger)
     : BaseActivity(nameof(KeyVaultActivities))
 {
     private const string DefaultSecretValue = "N/A";
@@ -22,7 +29,7 @@ public class KeyVaultActivities(
     /// <exception cref="ArgumentException">Thrown when the secret name is null or whitespace.</exception>
     [Function(nameof(GetSecretFromKeyVault))]
     public async Task<string> GetSecretFromKeyVault(
-        [ActivityTrigger] KeyVaultRequest input,
+        [ActivityTrigger] KeyVaultSecretInfo input,
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(GetSecretFromKeyVault), input);
@@ -37,17 +44,17 @@ public class KeyVaultActivities(
         try
         {
             KeyVaultSecret secret = await client.GetSecretAsync(secretName);
-            log.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
+            logger.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
             return secret.Value;
         }
         catch (Azure.RequestFailedException ex) when (ex.Status == 404)
         {
-            log.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
+            logger.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
             return DefaultSecretValue; // Return default value if secret not found
         }
         catch (Exception ex)
         {
-            log.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
+            logger.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -64,7 +71,7 @@ public class KeyVaultActivities(
     /// <returns>A list containing the values of the retrieved secrets, or default values for those not found.</returns>
     [Function(nameof(GetMultipleSecretsFromKeyVault))]
     public async Task<List<string>> GetMultipleSecretsFromKeyVault(
-        [ActivityTrigger] KeyVaultRequest input,
+        [ActivityTrigger] KeyVaultSecretInfo input,
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(GetMultipleSecretsFromKeyVault), input);
@@ -76,7 +83,7 @@ public class KeyVaultActivities(
         {
             if (string.IsNullOrWhiteSpace(secretName))
             {
-                log.LogWarning("One of the secret names is null or whitespace.");
+                logger.LogWarning("One of the secret names is null or whitespace.");
                 secretsValues.Add(DefaultSecretValue);
                 continue;
             }
@@ -85,16 +92,16 @@ public class KeyVaultActivities(
             {
                 KeyVaultSecret secret = await client.GetSecretAsync(secretName);
                 secretsValues.Add(secret.Value);
-                log.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
+                logger.LogInformation("Successfully retrieved secret: {SecretName}", secretName);
             }
             catch (Azure.RequestFailedException ex) when (ex.Status == 404)
             {
-                log.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
+                logger.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
                 secretsValues.Add(DefaultSecretValue);
             }
             catch (Exception ex)
             {
-                log.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
+                logger.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
                 secretsValues.Add(DefaultSecretValue);
             }
         }

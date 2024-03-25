@@ -1,8 +1,8 @@
 using Azure.Identity;
 using DurableOrchestrator.AI;
+using DurableOrchestrator.AzureKeyVault;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core.Observability;
-using DurableOrchestrator.KeyVault;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -46,8 +46,9 @@ var host = new HostBuilder()
             builder.Configuration,
             builder.HostingEnvironment.ApplicationName,
             builder.HostingEnvironment.IsDevelopment());
-        services.AddKeyVault();
 
+        // Requires if Key Vault is used
+        services.AddKeyVault(builder.Configuration);
         // Required for most activities, reads and write to blob storage
         services.AddBlobStorage(builder.Configuration);
         // Required if Text Analytics is used

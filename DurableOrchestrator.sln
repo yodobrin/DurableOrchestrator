@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DurableOrchestrator.Core", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DurableOrchestrator.AzureStorage", "src\DurableOrchestrator.AzureStorage\DurableOrchestrator.AzureStorage.csproj", "{567191AD-C97E-44C5-8E1F-FC703A0846F2}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DurableOrchestrator.AzureKeyVault", "src\DurableOrchestrator.AzureKeyVault\DurableOrchestrator.AzureKeyVault.csproj", "{20995C37-5D70-49B5-82B4-4B465ED19E7E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{567191AD-C97E-44C5-8E1F-FC703A0846F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{567191AD-C97E-44C5-8E1F-FC703A0846F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{567191AD-C97E-44C5-8E1F-FC703A0846F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20995C37-5D70-49B5-82B4-4B465ED19E7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20995C37-5D70-49B5-82B4-4B465ED19E7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20995C37-5D70-49B5-82B4-4B465ED19E7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20995C37-5D70-49B5-82B4-4B465ED19E7E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

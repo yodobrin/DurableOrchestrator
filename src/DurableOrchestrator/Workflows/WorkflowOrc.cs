@@ -1,7 +1,7 @@
+using DurableOrchestrator.AzureKeyVault;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
-using DurableOrchestrator.KeyVault;
 using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.Workflows;
@@ -41,7 +41,7 @@ public class WorkflowOrc()
         {
             var secretName = workFlowInput.Name;
 
-            var secretInput = new KeyVaultRequest { SecretName = secretName };
+            var secretInput = new KeyVaultSecretInfo { SecretName = secretName };
             secretInput.InjectObservabilityContext(span.Context);
 
             var secretValue = await context.CallActivityAsync<string>(
