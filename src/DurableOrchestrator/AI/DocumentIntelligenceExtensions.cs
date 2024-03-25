@@ -15,8 +15,8 @@ internal static class DocumentIntelligenceExtensions
 
             var endpoint = Environment.GetEnvironmentVariable("DOCUMENT_INTELLIGENCE_ENDPOINT");
             // The role of either the user or spn needs to have 'Cognitive User' role to access the Document Intelligence service
-
             // in case keys authorization is preferred, the following code can be used
+
             // var key = Environment.GetEnvironmentVariable("DOCUMENT_INTELLIGENCE_KEY");
             // AzureKeyCredential credentials = new AzureKeyCredential(key);
 

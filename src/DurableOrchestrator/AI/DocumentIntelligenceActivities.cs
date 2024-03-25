@@ -107,5 +107,4 @@ public class DocumentIntelligenceActivities(
 
         return true;
     }
-
 }
