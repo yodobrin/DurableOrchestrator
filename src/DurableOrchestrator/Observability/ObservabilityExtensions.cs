@@ -14,9 +14,12 @@ namespace DurableOrchestrator.Observability;
 /// </summary>
 internal static class ObservabilityExtensions
 {
+    internal static readonly TextMapPropagator s_propogator = new CompositeTextMapPropagator(
+        new List<TextMapPropagator> { new TraceContextPropagator(), new BaggagePropagator() });
+
     internal static void InjectTracingContext(this IObservableContext observableContext, SpanContext spanContext)
     {
-        Propagators.DefaultTextMapPropagator.Inject(
+        s_propogator.Inject(
             new PropagationContext(spanContext, Baggage.Current),
             observableContext.ObservableProperties,
             (props, key, value) =>
@@ -28,7 +31,7 @@ internal static class ObservabilityExtensions
 
     internal static SpanContext ExtractTracingContext(this IObservableContext observableContext)
     {
-        var propagationContext = Propagators.DefaultTextMapPropagator.Extract(
+        var propagationContext = s_propogator.Extract(
             default,
             observableContext.ObservableProperties,
             (props, key) =>

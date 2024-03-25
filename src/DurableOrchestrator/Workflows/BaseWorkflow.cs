@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.Workflows;
@@ -6,6 +7,7 @@ namespace DurableOrchestrator.Workflows;
 /// Initializes a new instance of the BaseWorkflow class with a specified workflow name. It sets up tracing for the workflow using the OpenTelemetry framework.
 /// </summary>
 /// <param name="workflowName">The name of the workflow for which tracing is to be set up.</param>
+[ActivitySource(nameof(BaseWorkflow))]
 public abstract class BaseWorkflow(string workflowName, ObservabilitySettings observabilitySettings)
 {
     //protected readonly TracerProvider ActivityTracerProvider = Sdk.CreateTracerProviderBuilder().ConfigureTracerBuilder(workflowName, observabilitySettings).Build();
