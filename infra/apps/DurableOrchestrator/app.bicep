@@ -15,8 +15,21 @@ param tags object = {}
 @description('Name of the container image for the Durable Orchestrator container.')
 param durableOrchestratorContainerImage string
 
+@description('Primary location for the deployed Document Intelligence service. Default is westeurope for latest preview support.')
+param documentIntelligenceLocation string = 'westeurope'
+@description('Primary location for the deployed OpenAI service. Default is francecentral for latest preview support.')
+param openAILocation string = 'francecentral'
+@description('Name of the GPT model deployment to use for the OpenAI service. Default is gpt-35-turbo.')
+param gptModelDeploymentName string = 'gpt-35-turbo'
+
 var abbrs = loadJsonContent('../../abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
+var documentIntelligenceResourceToken = toLower(uniqueString(
+  subscription().id,
+  workloadName,
+  documentIntelligenceLocation
+))
+var openAIResourceToken = toLower(uniqueString(subscription().id, workloadName, openAILocation))
 
 resource managedIdentityRef 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' existing = {
   name: '${abbrs.managedIdentity}${resourceToken}'
@@ -38,8 +51,16 @@ resource storageAccountRef 'Microsoft.Storage/storageAccounts@2022-09-01' existi
   name: '${abbrs.storageAccount}${resourceToken}'
 }
 
-resource textAnalytics 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+resource textAnalyticsRef 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
   name: '${abbrs.languageService}${resourceToken}'
+}
+
+resource documentIntelligenceRef 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+  name: '${abbrs.documentIntelligence}${documentIntelligenceResourceToken}'
+}
+
+resource openAIRef 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+  name: '${abbrs.openAIService}${openAIResourceToken}'
 }
 
 resource containerAppsEnvironmentRef 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
@@ -96,7 +117,19 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
       }
       {
         name: 'TEXT_ANALYTICS_ENDPOINT'
-        value: textAnalytics.properties.endpoint
+        value: textAnalyticsRef.properties.endpoint
+      }
+      {
+        name: 'DOCUMENT_INTELLIGENCE_ENDPOINT'
+        value: documentIntelligenceRef.properties.endpoint
+      }
+      {
+        name: 'OPENAI_ENDPOINT'
+        value: openAIRef.properties.endpoint
+      }
+      {
+        name: 'OPENAI_MODEL_DEPLOYMENT_NAME'
+        value: gptModelDeploymentName
       }
       {
         name: 'BlobSourceStorageAccountName'

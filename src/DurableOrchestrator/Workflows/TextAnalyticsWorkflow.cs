@@ -5,8 +5,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(TextAnalyticsWorkflow))]
-public class TextAnalyticsWorkflow(ObservabilitySettings observabilitySettings)
-    : BaseWorkflow(nameof(TextAnalyticsWorkflow), observabilitySettings)
+public class TextAnalyticsWorkflow()
+    : BaseWorkflow(nameof(TextAnalyticsWorkflow))
 {
     private const string OrchestrationName = "TextAnalyticsWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";

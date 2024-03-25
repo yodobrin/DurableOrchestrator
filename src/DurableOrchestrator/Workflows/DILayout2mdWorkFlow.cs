@@ -5,8 +5,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(DILayout2mdWorkFlow))]
-public class DILayout2mdWorkFlow(ObservabilitySettings observabilitySettings)
-    : BaseWorkflow(nameof(SplitPdfWorkflow), observabilitySettings)
+public class DILayout2mdWorkFlow()
+    : BaseWorkflow(nameof(SplitPdfWorkflow))
 {
     private const string OrchestrationName = "DILayout2mdWorkFlow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";

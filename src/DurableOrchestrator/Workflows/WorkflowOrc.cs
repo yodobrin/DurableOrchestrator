@@ -5,8 +5,8 @@ using DurableOrchestrator.Storage;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(WorkflowOrc))]
-public class WorkflowOrc(ObservabilitySettings observabilitySettings)
-    : BaseWorkflow(nameof(WorkflowOrc), observabilitySettings)
+public class WorkflowOrc()
+    : BaseWorkflow(nameof(WorkflowOrc))
 {
     private const string OrchestrationName = "WorkflowOrc";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";

@@ -7,9 +7,8 @@ namespace DurableOrchestrator.Storage;
 [ActivitySource(nameof(BlobStorageActivities))]
 public class BlobStorageActivities(
     BlobServiceClientsWrapper blobServiceClientsWrapper,
-    ILogger<BlobStorageActivities> log,
-    ObservabilitySettings observabilitySettings)
-    : BaseActivity(nameof(BlobStorageActivities), observabilitySettings)
+    ILogger<BlobStorageActivities> log)
+    : BaseActivity(nameof(BlobStorageActivities))
 {
     /// <summary>
     /// Retrieves the content of a blob as a string. Validates the input before attempting to read the blob's content.
@@ -33,7 +32,6 @@ public class BlobStorageActivities(
         {
             var blobContainerClient =
                 blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
-            // await blobContainerClient.CreateIfNotExistsAsync();
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
@@ -75,7 +73,6 @@ public class BlobStorageActivities(
 
             var blobContainerClient =
                 blobServiceClientsWrapper.SourceClient.GetBlobContainerClient(input.ContainerName);
-            // await blobContainerClient.CreateIfNotExistsAsync();
 
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
@@ -116,7 +113,6 @@ public class BlobStorageActivities(
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
-            // var blobClient = _blobServiceClientsWrapper.TargetClient.GetBlobContainerClient(input.ContainerName).GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);

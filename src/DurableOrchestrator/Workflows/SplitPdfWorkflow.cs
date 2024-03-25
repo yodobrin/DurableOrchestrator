@@ -5,8 +5,8 @@ using iText.Kernel.Pdf;
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource(nameof(SplitPdfWorkflow))]
-public class SplitPdfWorkflow(ObservabilitySettings observabilitySettings)
-    : BaseWorkflow(nameof(SplitPdfWorkflow), observabilitySettings)
+public class SplitPdfWorkflow()
+    : BaseWorkflow(nameof(SplitPdfWorkflow))
 {
     private const string OrchestrationName = "SplitPdfWorkflow";
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
