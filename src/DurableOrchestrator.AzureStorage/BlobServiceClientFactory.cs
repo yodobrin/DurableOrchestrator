@@ -11,8 +11,17 @@ public class BlobServiceClientFactory(DefaultAzureCredential azureCredential)
 {
     public BlobServiceClient GetBlobServiceClient(string storageAccountName)
     {
-        return new BlobServiceClient(
-                       new Uri($"https://{storageAccountName}.blob.core.windows.net"),
-                                  azureCredential);
+        return IsDevelopmentStorageAccount(storageAccountName)
+            ? new BlobServiceClient("UseDevelopmentStorage=true")
+            : new BlobServiceClient(
+                new Uri($"https://{storageAccountName}.blob.core.windows.net"),
+                azureCredential);
+    }
+
+    private static bool IsDevelopmentStorageAccount(string storageAccountName)
+    {
+        return !string.IsNullOrWhiteSpace(storageAccountName) &&
+               (storageAccountName.Equals("devstoreaccount1", StringComparison.OrdinalIgnoreCase) ||
+                storageAccountName.StartsWith("UseDevelopmentStorage", StringComparison.OrdinalIgnoreCase));
     }
 }
