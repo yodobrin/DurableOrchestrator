@@ -24,80 +24,83 @@ public class SplitPdfWorkflow()
     {
         // step 1: obtain input for the workflow
         var workFlowInput = context.GetInput<WorkFlowInput>() ??
-                            throw new ArgumentNullException(nameof(context), "WorkFlowInput is null.");
+                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkFlowInput)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, workFlowInput);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
 
-        var orchestrationResults = new List<string>();
+        var orchestrationResults = new WorkflowResult(OrchestrationName, log);
 
         // step 2: validate the input
         var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult.ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError($"SplitPdfWorkflow::WorkFlowInput is invalid. {validationResult}");
-            return orchestrationResults; // Exit the orchestration due to validation errors
+            orchestrationResults.AddRange(
+                nameof(IWorkflowRequest.Validate),
+                $"{nameof(workFlowInput)} is invalid.",
+                validationResult.ValidationMessages,
+                LogLevel.Error);
+            return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add("SplitPdfWorkflow::WorkFlowInput is valid.");
-        log.LogInformation("SplitPdfWorkflow::WorkFlowInput is valid.");
+        orchestrationResults.Add(nameof(IWorkflowRequest.Validate), $"{nameof(workFlowInput)} is valid.");
 
-        // step 3:
-        // read the source file from blob storage using the input
+        // step 3: read the source file from blob storage using the input and split the PDF file into individual pages
         var splitResults = new List<byte[]>();
-        var sourceBlobStorageInfo = workFlowInput.SourceBlobStorageInfo!;
-        sourceBlobStorageInfo.InjectObservabilityContext(span.Context);
 
-        var sourceFile = await context.CallActivityAsync<byte[]>(nameof(BlobStorageActivities.GetBlobContentAsBuffer), sourceBlobStorageInfo);
+        var sourceFile = await CallActivityAsync<byte[]?>(
+            context,
+            nameof(BlobStorageActivities.GetBlobContentAsBuffer),
+            workFlowInput.SourceBlobStorageInfo!,
+            span.Context);
 
         if (sourceFile == null)
         {
-            log.LogError("SplitPdfWorkflow::Source file is null or empty.");
-            orchestrationResults.Add("Source file is null or empty.");
-            return orchestrationResults; // Exit the orchestration due to missing source file
+            orchestrationResults.Add(
+                nameof(BlobStorageActivities.GetBlobContentAsBuffer),
+                $"{nameof(sourceFile)} is null or empty.",
+                LogLevel.Error);
+            return orchestrationResults.Results; // Exit the orchestration due to missing blob content
         }
 
-        // split the PDF file into individual pages
         try
         {
             using var pdfReader = new PdfReader(new MemoryStream(sourceFile));
             using var pdfDocument = new PdfDocument(pdfReader);
 
-            int numberOfPages = pdfDocument.GetNumberOfPages();
-            orchestrationResults.Add($"SplitPdfWorkflow::Number of pages in the PDF: {numberOfPages}");
-            for (int i = 1; i <= numberOfPages; i++)
+            var numberOfPages = pdfDocument.GetNumberOfPages();
+
+            for (var i = 1; i <= numberOfPages; i++)
             {
-                using (var writeMemoryStream = new MemoryStream())
-                using (var pdfWriter = new PdfWriter(writeMemoryStream))
-                using (var pdfDest = new PdfDocument(pdfWriter))
-                {
-                    pdfDocument.CopyPagesTo(i, i, pdfDest);
-                    pdfDest.Close(); // Ensure closure to flush content to stream
+                using var writeMemoryStream = new MemoryStream();
+                await using var pdfWriter = new PdfWriter(writeMemoryStream);
+                using var pdfDest = new PdfDocument(pdfWriter);
 
-                    splitResults.Add(writeMemoryStream.ToArray());
+                pdfDocument.CopyPagesTo(i, i, pdfDest);
+                pdfDest.Close(); // Ensure closure to flush content to stream
 
-                }
+                splitResults.Add(writeMemoryStream.ToArray());
             }
 
-        }
-        catch (iText.Kernel.Exceptions.PdfException ex)
-        {
-            log.LogError($"SplitPdfWorkflow::PDF processing error: {ex.Message}, stack: {ex.StackTrace}, Details: {ex.InnerException}");
-            orchestrationResults.Add($"PDF processing error: {ex.Message}");
-            return orchestrationResults;
+            orchestrationResults.Add(
+                nameof(PdfDocument.CopyPagesTo),
+                $"{nameof(sourceFile)} was split into {numberOfPages} pages.");
         }
         catch (Exception ex)
         {
-            log.LogError($"SplitPdfWorkflow::Unexpected error: {ex.Message}, StackTrace: {ex.StackTrace}");
-            orchestrationResults.Add($"Unexpected error: {ex.Message}");
-            return orchestrationResults;
+            orchestrationResults.Add(
+                nameof(PdfDocument.CopyPagesTo),
+                $"{nameof(sourceFile)} PDF processing failed. {ex.Message}",
+                LogLevel.Error);
+            return orchestrationResults.Results;
         }
+
         // step 4: write the split PDF files to blob storage
         var writeTasks = new List<Task>();
-        for (int i = 0; i < splitResults.Count; i++)
+
+        for (var i = 0; i < splitResults.Count; i++)
         {
-            var blobStorageInfo = new BlobStorageRequest
+            var blobStorageRequest = new BlobStorageRequest
             {
                 StorageAccountName = workFlowInput.TargetBlobStorageInfo!.StorageAccountName,
                 ContainerName = workFlowInput.TargetBlobStorageInfo!.ContainerName,
@@ -105,19 +108,26 @@ public class SplitPdfWorkflow()
                 Buffer = splitResults[i]
             };
 
-            blobStorageInfo.InjectObservabilityContext(span.Context);
+            var writeTask = CallActivityAsync(
+                context,
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                blobStorageRequest,
+                span.Context);
+            writeTasks.Add(writeTask);
 
-            var task = context.CallActivityAsync(nameof(BlobStorageActivities.WriteBufferToBlob), blobStorageInfo);
-            orchestrationResults.Add($"SplitPdfWorkflow:: Added split pdf: {blobStorageInfo.BlobName} to the write tasks.");
-            writeTasks.Add(task);
+            orchestrationResults.Add(
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                $"{blobStorageRequest.BlobName} added to write tasks.");
         }
+
         // Fan-out: start all write operations concurrently and wait for all of them to complete
         await Task.WhenAll(writeTasks);
 
+        orchestrationResults.Add(
+            nameof(BlobStorageActivities.WriteBufferToBlob),
+            $"{nameof(splitResults)} saved to blob storage.");
 
-        orchestrationResults.Add("SplitPdfWorkflow::Split completed.");
-
-        return orchestrationResults;
+        return orchestrationResults.Results;
     }
 
     /// <summary>
@@ -135,7 +145,6 @@ public class SplitPdfWorkflow()
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(OrchestrationTriggerName);
-
         var log = executionContext.GetLogger(OrchestrationTriggerName);
 
         var requestBody = await req.ReadAsStringAsync();
@@ -146,11 +155,11 @@ public class SplitPdfWorkflow()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput<WorkFlowInput>(requestBody);
-        input.InjectObservabilityContext(span.Context);
-
-        // Function input extracted from the request content.
-        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
+        var instanceId = await StartWorkflowAsync(
+            starter,
+            OrchestrationName,
+            ExtractInput<WorkFlowInput>(requestBody),
+            span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

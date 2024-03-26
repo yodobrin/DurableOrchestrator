@@ -24,41 +24,41 @@ public class TextAnalyticsWorkflow()
     {
         // step 1: obtain input for the workflow
         var workFlowInput = context.GetInput<WorkFlowInput>() ??
-                            throw new ArgumentNullException(nameof(context), "WorkFlowInput is null.");
+                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkFlowInput)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, workFlowInput);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
 
-        var orchestrationResults = new List<string>();
+        var orchestrationResults = new WorkflowResult(OrchestrationName, log);
 
         // step 2: validate the input
         var validationResult = workFlowInput.Validate();
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(validationResult
-                .ValidationMessages); // some of the 'errors' are not really errors, but just informational messages
-            log.LogError(
-                $"TextAnalyticsWorkflow::WorkFlowInput is invalid. {validationResult}");
-            return orchestrationResults; // Exit the orchestration due to validation errors
+            orchestrationResults.AddRange(
+                nameof(IWorkflowRequest.Validate),
+                $"{nameof(workFlowInput)} is invalid.",
+                validationResult.ValidationMessages,
+                LogLevel.Error);
+            return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add("TextAnalyticsWorkflow::WorkFlowInput is valid.");
-        log.LogInformation("TextAnalyticsWorkflow::WorkFlowInput is valid.");
+        orchestrationResults.Add(nameof(IWorkflowRequest.Validate), $"{nameof(workFlowInput)} is valid.");
 
         // step 3:
         // call the sentiment analysis activity for each text analytics request - fan-out/fan-in
-        var sentimentTasks = new List<Task<string?>>();
-        // both workflowinput and textanalyticsrequests are not null - checked above
-        foreach (var request in workFlowInput!.TextAnalyticsRequests!)
-        {
-            // Fan-out: start a task for each text analytics request
-            request.InjectObservabilityContext(span.Context);
-            var task = context.CallActivityAsync<string?>(nameof(TextAnalyticsActivities.GetSentiment), request);
-            sentimentTasks.Add(task);
-        }
+        var sentimentTasks = workFlowInput.TextAnalyticsRequests!.Select(
+                request =>
+                    CallActivityAsync<string?>(
+                        context,
+                        nameof(TextAnalyticsActivities.GetSentiment),
+                        request,
+                        span.Context))
+            .ToList();
 
         // Fan-in: Wait for all sentiment analysis tasks to complete
         await Task.WhenAll(sentimentTasks);
+
         // Collect results
         var sentiments = new List<string?>();
         foreach (var task in sentimentTasks)
@@ -66,10 +66,13 @@ public class TextAnalyticsWorkflow()
             sentiments.Add(await task); // Here, you could handle nulls or errors as needed
         }
 
-        orchestrationResults.Add("TextAnalyticsWorkflow::Sentiment analysis completed.");
-        // create a new file, and save the sentiments gathered from the text analytics together with the original text
+        orchestrationResults.Add(
+            nameof(TextAnalyticsActivities.GetSentiment),
+            "Sentiment analysis completed for all text analytics requests.");
+
+        // step 4: create a new file, and save the sentiments gathered from the text analytics together with the original text to blob storage
         var analysisResults = new TextSentimentResults();
-        for (var i = 0; i < workFlowInput!.TextAnalyticsRequests!.Count; i++)
+        for (var i = 0; i < workFlowInput.TextAnalyticsRequests!.Count; i++)
         {
             analysisResults.Results.Add(new TextSentimentResult
             {
@@ -79,23 +82,39 @@ public class TextAnalyticsWorkflow()
         }
 
         var blobContent = JsonSerializer.Serialize(analysisResults, new JsonSerializerOptions { WriteIndented = true });
-
-        // first define where to write the file
-        var targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
-
         if (blobContent.Length == 0)
         {
-            log.LogError("BatchExtractSentiment::Blob content is empty or null.");
-            orchestrationResults.Add("Blob content is empty or null.");
-            return orchestrationResults; // Exit the orchestration due to missing blob content
+            orchestrationResults.Add(
+                nameof(JsonSerializer.Serialize),
+                $"{nameof(blobContent)} is empty.",
+                LogLevel.Error);
+            return orchestrationResults.Results; // Exit the orchestration due to missing blob content
         }
 
-        // step 4: write to another blob
-        targetBlobStorageInfo.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
-        targetBlobStorageInfo.InjectObservabilityContext(span.Context);
-        await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
+        workFlowInput.TargetBlobStorageInfo!.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
 
-        return orchestrationResults;
+        try
+        {
+            await CallActivityAsync<string>(
+                context,
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                workFlowInput.TargetBlobStorageInfo!,
+                span.Context);
+
+            orchestrationResults.Add(
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                $"{nameof(blobContent)} file saved to blob storage.");
+        }
+        catch (Exception ex)
+        {
+            orchestrationResults.Add(
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                $"{nameof(blobContent)} file failed to save to blob storage. {ex.Message}",
+                LogLevel.Error);
+            return orchestrationResults.Results; // Exit the orchestration due to an error during the write operation
+        }
+
+        return orchestrationResults.Results;
     }
 
     /// <summary>
@@ -113,7 +132,6 @@ public class TextAnalyticsWorkflow()
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(OrchestrationTriggerName);
-
         var log = executionContext.GetLogger(OrchestrationTriggerName);
 
         var requestBody = await req.ReadAsStringAsync();
@@ -124,11 +142,11 @@ public class TextAnalyticsWorkflow()
             throw new ArgumentException("The request body must not be null or empty.", nameof(req));
         }
 
-        var input = ExtractInput<WorkFlowInput>(requestBody);
-        input.InjectObservabilityContext(span.Context);
-
-        // Function input extracted from the request content.
-        var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(OrchestrationName, input);
+        var instanceId = await StartWorkflowAsync(
+            starter,
+            OrchestrationName,
+            ExtractInput<WorkFlowInput>(requestBody),
+            span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

@@ -29,7 +29,7 @@ public class DocumentIntelligenceActivities(
     /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
     /// <exception cref="Exception">Thrown when an unhandled error occurs during the operation.</exception>
     [Function(nameof(AnalyzeDocumentToMarkdown))]
-    public async Task<byte[]> AnalyzeDocumentToMarkdown(
+    public async Task<byte[]?> AnalyzeDocumentToMarkdown(
         [ActivityTrigger] DocumentIntelligenceRequest input,
         FunctionContext executionContext)
     {
