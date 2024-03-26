@@ -11,11 +11,11 @@ namespace DurableOrchestrator.AzureStorage;
 /// <summary>
 /// Defines a collection of activities for interacting with Azure Blob Storage.
 /// </summary>
-/// <param name="blobServiceClients">The source and target <see cref="BlobServiceClient"/> instances.</param>
+/// <param name="blobServiceClientFactory">The source and target <see cref="BlobServiceClient"/> instances.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
 [ActivitySource(nameof(BlobStorageActivities))]
 public class BlobStorageActivities(
-    BlobServiceClients blobServiceClients,
+    BlobServiceClientFactory blobServiceClientFactory,
     ILogger<BlobStorageActivities> logger)
     : BaseActivity(nameof(BlobStorageActivities))
 {
@@ -39,10 +39,10 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobContainerClient =
-                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
-
-            var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
+            var blobClient = blobServiceClientFactory
+                .GetBlobServiceClient(input.StorageAccountName)
+                .GetBlobContainerClient(input.ContainerName)
+                .GetBlobClient(input.BlobName);
 
             var downloadResult = await blobClient.DownloadContentAsync();
             return downloadResult.Value.Content.ToString();
@@ -80,10 +80,10 @@ public class BlobStorageActivities(
         {
             logger.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
 
-            var blobContainerClient =
-                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
-
-            var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
+            var blobClient = blobServiceClientFactory
+                .GetBlobServiceClient(input.StorageAccountName)
+                .GetBlobContainerClient(input.ContainerName)
+                .GetBlobClient(input.BlobName);
 
             using var memoryStream = new MemoryStream();
             await blobClient.DownloadToAsync(memoryStream);
@@ -117,10 +117,13 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobContainerClient =
-                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
+            var blobContainerClient = blobServiceClientFactory
+                .GetBlobServiceClient(input.StorageAccountName)
+                .GetBlobContainerClient(input.ContainerName);
+
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
+
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
@@ -155,10 +158,14 @@ public class BlobStorageActivities(
         try
         {
             logger.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
-            var blobContainerClient =
-                blobServiceClients.Source.GetBlobContainerClient(input.ContainerName);
+
+            var blobContainerClient = blobServiceClientFactory
+                .GetBlobServiceClient(input.StorageAccountName)
+                .GetBlobContainerClient(input.ContainerName);
+
             // verify the container exists
             await blobContainerClient.CreateIfNotExistsAsync();
+
             var blobClient = blobContainerClient.GetBlobClient(input.BlobName);
 
             using var stream = new MemoryStream(input.Buffer);

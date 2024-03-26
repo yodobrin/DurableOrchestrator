@@ -21,28 +21,13 @@ public static class StorageExtensions
         var storageSettings = StorageSettings.FromConfiguration(configuration);
         services.AddScoped(_ => storageSettings);
 
-        services.AddSingleton(sp =>
+        services.AddSingleton(_ =>
         {
             var connectionString = configuration.GetValue<string>("AzureWebJobsStorage");
             return new BlobServiceClient(connectionString);
         });
 
-        services.AddSingleton(sp =>
-        {
-            var credentials = sp.GetRequiredService<DefaultAzureCredential>();
-
-            var sourceClient =
-                new BlobServiceClient(
-                    new Uri($"https://{storageSettings.BlobSourceStorageAccountName}.blob.core.windows.net"),
-                    credentials);
-
-            var targetClient =
-                new BlobServiceClient(
-                    new Uri($"https://{storageSettings.BlobTargetStorageAccountName}.blob.core.windows.net"),
-                    credentials);
-
-            return new BlobServiceClients(sourceClient, targetClient);
-        });
+        services.AddSingleton<BlobServiceClientFactory>();
 
         return services;
     }
