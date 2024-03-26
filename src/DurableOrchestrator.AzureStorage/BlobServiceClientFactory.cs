@@ -9,6 +9,14 @@ namespace DurableOrchestrator.AzureStorage;
 /// <param name="azureCredential">The Azure credential to use for authentication with Azure Blob Storage clients.</param>
 public class BlobServiceClientFactory(DefaultAzureCredential azureCredential)
 {
+    /// <summary>
+    /// Retrieves a <see cref="BlobServiceClient"/> for the specified storage account name
+    /// </summary>
+    /// <remarks>
+    /// If the specified storage account name is a development storage account (i.e., devstoreaccount1 or UseDevelopmentStorage), the client will be created using the development storage connection string.
+    /// </remarks>
+    /// <param name="storageAccountName">The name of the storage account to create a client for.</param>
+    /// <returns>A <see cref="BlobServiceClient"/> for the specified storage account name.</returns>
     public BlobServiceClient GetBlobServiceClient(string storageAccountName)
     {
         return IsDevelopmentStorageAccount(storageAccountName)
