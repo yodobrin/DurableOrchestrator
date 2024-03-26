@@ -7,13 +7,13 @@ on:
     branches:
       - main
     paths:
-      - src/DurableOrchestrator/**
+      - src/**
       - .github/workflows/durable-orchestrator.yml
   pull_request:
     branches:
       - main
     paths:
-      - src/DurableOrchestrator/**
+      - src/**
       - .github/workflows/durable-orchestrator.yml
   workflow_dispatch:
 
