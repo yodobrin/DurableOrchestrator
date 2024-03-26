@@ -4,14 +4,14 @@ POST http://localhost:7071/api/CopyBlobWorkflow_HttpStart
 
 {
   "sourceBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "functions.csv",
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "test.txt",
     "containerName": "sourcecontainer"
   },
   "targetBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "copy_2.22.944_functions.csv",
-    "containerName": "target2container"
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "test_copy.txt",
+    "containerName": "targetcontainer"
   }  
 }
 
@@ -21,14 +21,14 @@ POST http://localhost:7071/api/DocumentIntelligenceToMarkdownWorkflow_HttpStart
 
 {
   "sourceBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
+    "storageAccountName": "devstoreaccount1",
     "blobName": "Invoice_1.pdf",
-    "containerName": "docintelin"
+    "containerName": "sourcecontainer"
   },
   "targetBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "output2.md",
-    "containerName": "docintelout"
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "Invoice_1.md",
+    "containerName": "targetcontainer"
   }
 }
 
@@ -39,13 +39,13 @@ POST http://localhost:7071/api/KeyVaultSecretToBlobWorkflow_HttpStart
 {
   "name": "samplesec",
   "sourceBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "sample.pdf",
-    "containerName": "fullcontainer"
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "Invoice_1.pdf",
+    "containerName": "sourcecontainer"
   },
   "targetBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "whatasecret22.3.943.txt",
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "Invoice_1.pdf",
     "containerName": "targetcontainer"
   }
 }
@@ -56,14 +56,14 @@ POST http://localhost:7071/api/SplitPdfWorkflow_HttpStart
 
 {
   "sourceBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "sample.pdf",
-    "containerName": "fullcontainer"
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "Invoice_1.pdf",
+    "containerName": "sourcecontainer"
   },
   "targetBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "split_3.22.944_sample.pdf",
-    "containerName": "splitcontainer"
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "Invoice_1_Split.pdf",
+    "containerName": "targetcontainer"
   }  
 }
 
@@ -73,9 +73,9 @@ POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
 
 {
   "targetBlobStorageInfo": {
-    "storageAccountName": "ydinventorylogs",
-    "blobName": "sentiments3.07.1302.json",
-    "containerName": "target1container"
+    "storageAccountName": "devstoreaccount1",
+    "blobName": "Sentiments.json",
+    "containerName": "targetcontainer"
   },
   "textAnalyticsRequests": [
     {
