@@ -41,7 +41,7 @@ public class WorkflowOrc()
         {
             var secretName = workFlowInput.Name;
 
-            var secretInput = new KeyVaultSecretInfo { SecretName = secretName };
+            var secretInput = new KeyVaultSecretRequest { SecretName = secretName };
             secretInput.InjectObservabilityContext(span.Context);
 
             var secretValue = await context.CallActivityAsync<string>(
@@ -56,7 +56,7 @@ public class WorkflowOrc()
                 return orchestrationResults;
             }
 
-            // Update BlobStorageInfo with the secret value
+            // Update BlobStorageRequest with the secret value
             workFlowInput.TargetBlobStorageInfo!.Content = secretValue;
             workFlowInput.TargetBlobStorageInfo!.InjectObservabilityContext(span.Context);
 

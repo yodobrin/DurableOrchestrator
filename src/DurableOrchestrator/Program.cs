@@ -1,7 +1,9 @@
 using Azure.Identity;
-using DurableOrchestrator.AI;
+using DurableOrchestrator.AzureDocumentIntelligence;
 using DurableOrchestrator.AzureKeyVault;
+using DurableOrchestrator.AzureOpenAI;
 using DurableOrchestrator.AzureStorage;
+using DurableOrchestrator.AzureTextAnalytics;
 using DurableOrchestrator.Core.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,9 +54,9 @@ var host = new HostBuilder()
         // Required for most activities, reads and write to blob storage
         services.AddBlobStorage(builder.Configuration);
         // Required if Text Analytics is used
-        services.AddTextAnalytics();
+        services.AddTextAnalytics(builder.Configuration);
         // Required if Document Intelligence is used
-        services.AddDocumentIntelligence();
+        services.AddDocumentIntelligence(builder.Configuration);
         // Required if OpenAI is used
         services.AddOpenAI(builder.Configuration);
     })

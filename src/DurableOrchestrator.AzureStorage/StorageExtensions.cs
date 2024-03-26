@@ -1,4 +1,3 @@
-using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,9 +17,6 @@ public static class StorageExtensions
     /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
     public static IServiceCollection AddBlobStorage(this IServiceCollection services, IConfiguration configuration)
     {
-        var storageSettings = StorageSettings.FromConfiguration(configuration);
-        services.AddScoped(_ => storageSettings);
-
         services.AddSingleton(_ =>
         {
             var connectionString = configuration.GetValue<string>("AzureWebJobsStorage");

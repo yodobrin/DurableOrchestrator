@@ -1,12 +1,12 @@
 using System.Text.Json.Serialization;
-using DurableOrchestrator.Core.Observability;
+using DurableOrchestrator.Core;
 
 namespace DurableOrchestrator.AzureStorage;
 
 /// <summary>
 /// Defines a model that represents information about a blob in Azure Storage.
 /// </summary>
-public class BlobStorageInfo : IObservabilityContext
+public class BlobStorageRequest : IWorkflowRequest
 {
     /// <summary>
     /// Gets or sets the name of the storage account.
@@ -47,4 +47,32 @@ public class BlobStorageInfo : IObservabilityContext
     /// <inheritdoc />
     [JsonPropertyName("observableProperties")]
     public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
+
+    /// <inheritdoc />
+    public ValidationResult Validate()
+    {
+        return Validate(true);
+    }
+
+    /// <summary>
+    /// Validates the input with an option to check the content.
+    /// </summary>
+    /// <param name="checkContent">A flag indicating whether to check the content.</param>
+    /// <returns>A <see cref="ValidationResult"/> indicating whether the input is valid.</returns>
+    public ValidationResult Validate(bool checkContent)
+    {
+        var result = new ValidationResult();
+
+        if (!checkContent)
+        {
+            return result;
+        }
+
+        if (string.IsNullOrWhiteSpace(Content))
+        {
+            result.AddErrorMessage($"{nameof(Content)} is missing.");
+        }
+
+        return result;
+    }
 }

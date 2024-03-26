@@ -1,5 +1,5 @@
-using DurableOrchestrator.AI;
 using DurableOrchestrator.AzureStorage;
+using DurableOrchestrator.AzureTextAnalytics;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 using DurableOrchestrator.Models;
@@ -68,7 +68,7 @@ public class TextAnalyticsWorkflow()
 
         orchestrationResults.Add("TextAnalyticsWorkflow::Sentiment analysis completed.");
         // create a new file, and save the sentiments gathered from the text analytics together with the original text
-        var analysisResults = new AnalysisResults();
+        var analysisResults = new TextSentimentResults();
         for (var i = 0; i < workFlowInput!.TextAnalyticsRequests!.Count; i++)
         {
             analysisResults.Results.Add(new TextSentimentResult

@@ -14,7 +14,7 @@ public class KeyVaultSettings(string keyVaultUrl)
     public const string KeyVaultUrlConfigKey = "KEY_VAULT_URL";
 
     /// <summary>
-    /// Gets the name of the source Azure Storage account.
+    /// Gets the URL of the Azure Key Vault.
     /// </summary>
     public string KeyVaultUrl { get; init; } = keyVaultUrl;
 
@@ -23,12 +23,12 @@ public class KeyVaultSettings(string keyVaultUrl)
     /// </summary>
     /// <param name="configuration">The <see cref="IConfiguration"/> to use.</param>
     /// <returns>A new instance of the <see cref="KeyVaultSettings"/> class.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the KeyVaultUrl is not configured.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the required configuration is not present.</exception>
     public static KeyVaultSettings FromConfiguration(IConfiguration configuration)
     {
         var keyVaultUrl = configuration.GetValue<string>(KeyVaultUrlConfigKey) ??
                           throw new InvalidOperationException(
-                              "KeyVaultUrl is not configured.");
+                              $"{KeyVaultUrlConfigKey} is not configured.");
 
         return new KeyVaultSettings(keyVaultUrl);
     }

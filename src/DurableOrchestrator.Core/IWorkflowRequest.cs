@@ -3,9 +3,9 @@ using DurableOrchestrator.Core.Observability;
 namespace DurableOrchestrator.Core;
 
 /// <summary>
-/// Defines an interface for the input to a workflow.
+/// Defines an interface for the input to a workflow or activity.
 /// </summary>
-public interface IWorkflowInput : IObservabilityContext
+public interface IWorkflowRequest : IObservabilityContext
 {
     /// <summary>
     /// Validates the input.

@@ -1,5 +1,5 @@
+using DurableOrchestrator.AzureDocumentIntelligence;
 using DurableOrchestrator.Models;
-using DurableOrchestrator.AI;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
@@ -52,10 +52,10 @@ public class DILayout2mdWorkFlow()
         DocumentIntelligenceRequest request = new DocumentIntelligenceRequest
         {
             Content = sourceFile,
-            ValueBy = ContentType.InMemory,
+            ValueBy = DocumentIntelligenceRequestContentType.InMemory,
             ModelId = "prebuilt-layout"
         };
-        var markDown = await context.CallActivityAsync<byte[]>(nameof(DocumentIntelligenceActivities.AnalyzeDocument2Markdown), request);
+        var markDown = await context.CallActivityAsync<byte[]>(nameof(DocumentIntelligenceActivities.AnalyzeDocumentToMarkdown), request);
         if(markDown == null)
         {
             log.LogError($"{OrchestrationName}::Failed to convert layout to markdown.");

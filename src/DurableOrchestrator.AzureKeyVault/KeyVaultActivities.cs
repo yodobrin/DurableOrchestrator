@@ -21,25 +21,31 @@ public class KeyVaultActivities(
     private const string DefaultSecretValue = "N/A";
 
     /// <summary>
-    /// Retrieves a single secret from Azure Key Vault. If the secret is not found, a default value is returned. This method logs the outcome of the operation and handles exceptions by logging them and rethrowing.
+    /// Retrieves a secret from Azure Key Vault based on the provided secret name.
     /// </summary>
-    /// <param name="input">The activity input containing the name of the secret to retrieve.</param>
-    /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
+    /// <remarks>
+    /// If the secret is not found, a default value is returned instead.
+    /// </remarks>
+    /// <param name="input">The key vault secret request containing the name of the secret to retrieve.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
     /// <returns>The value of the secret, or a default value if the secret is not found.</returns>
-    /// <exception cref="ArgumentException">Thrown when the secret name is null or whitespace.</exception>
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
+    /// <exception cref="Exception">Thrown when an unhandled error occurs during the operation.</exception>
     [Function(nameof(GetSecretFromKeyVault))]
     public async Task<string> GetSecretFromKeyVault(
-        [ActivityTrigger] KeyVaultSecretInfo input,
+        [ActivityTrigger] KeyVaultSecretRequest input,
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(GetSecretFromKeyVault), input);
 
-        var secretName = input.SecretName;
-
-        if (string.IsNullOrWhiteSpace(secretName))
+        var validationResult = input.Validate();
+        if (!validationResult.IsValid)
         {
-            throw new ArgumentException("Secret name must not be null or whitespace.");
+            throw new ArgumentException(
+                $"{nameof(GetSecretFromKeyVault)}::{nameof(input)} is invalid. {validationResult}");
         }
+
+        var secretName = input.SecretName;
 
         try
         {
@@ -50,33 +56,45 @@ public class KeyVaultActivities(
         catch (Azure.RequestFailedException ex) when (ex.Status == 404)
         {
             logger.LogWarning("Secret not found: {SecretName}. Using default value.", secretName);
-            return DefaultSecretValue; // Return default value if secret not found
+            return DefaultSecretValue;
         }
         catch (Exception ex)
         {
-            logger.LogError("Error retrieving secret {SecretName}: {Message}", secretName, ex.Message);
+            logger.LogError("{Activity} failed. {Error}", nameof(GetSecretFromKeyVault), ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
 
-            throw; // Rethrow exceptions other than not found
+            throw;
         }
     }
 
     /// <summary>
-    /// Retrieves multiple secrets from Azure Key Vault based on a list of secret names. Each secret's retrieval is attempted, and if not found, a default value is returned for it. The method logs the outcome of each attempt.
+    /// Retrieves multiple secrets from Azure Key Vault based on a list of secret names.
     /// </summary>
-    /// <param name="input">The activity input containing a list of secret names to retrieve.</param>
-    /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
+    /// <remarks>
+    /// Each secret's retrieval is attempted, and if not found, a default value is returned for it.
+    /// </remarks>
+    /// <param name="input">The key vault secret request containing the names of the secrets to retrieve.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
     /// <returns>A list containing the values of the retrieved secrets, or default values for those not found.</returns>
-    [Function(nameof(GetMultipleSecretsFromKeyVault))]
-    public async Task<List<string>> GetMultipleSecretsFromKeyVault(
-        [ActivityTrigger] KeyVaultSecretInfo input,
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
+    /// <exception cref="Exception">Thrown when an unhandled error occurs during the operation.</exception>
+    [Function(nameof(GetSecretsFromKeyVault))]
+    public async Task<List<string>> GetSecretsFromKeyVault(
+        [ActivityTrigger] KeyVaultSecretRequest input,
         FunctionContext executionContext)
     {
-        using var span = StartActiveSpan(nameof(GetMultipleSecretsFromKeyVault), input);
+        using var span = StartActiveSpan(nameof(GetSecretsFromKeyVault), input);
 
-        var secretNames = input.SecretNames ?? throw new ArgumentException("Secret names must not be null.");
+        var validationResult = input.Validate();
+        if (!validationResult.IsValid)
+        {
+            throw new ArgumentException(
+                $"{nameof(GetSecretFromKeyVault)}::{nameof(input)} is invalid. {validationResult}");
+        }
+
+        var secretNames = input.SecretNames!;
         var secretsValues = new List<string>();
 
         foreach (var secretName in secretNames)

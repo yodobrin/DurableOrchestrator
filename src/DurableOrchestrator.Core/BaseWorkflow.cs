@@ -19,16 +19,16 @@ public abstract class BaseWorkflow(string name)
     /// <summary>
     /// Extracts the input for the workflow from the request body.
     /// </summary>
-    /// <typeparam name="TInput">The type of <see cref="IWorkflowInput"/> to extract.</typeparam>
+    /// <typeparam name="TInput">The type of <see cref="IWorkflowRequest"/> to extract.</typeparam>
     /// <param name="requestBody">The request body to extract the input from.</param>
     /// <returns>The extracted input for the workflow.</returns>
-    /// <exception cref="ArgumentException">Thrown when the request body is not a valid JSON representation of a <see cref="IWorkflowInput"/> object.</exception>
+    /// <exception cref="ArgumentException">Thrown when the request body is not a valid JSON representation of a <see cref="IWorkflowRequest"/> object.</exception>
     protected static TInput ExtractInput<TInput>(string requestBody)
-        where TInput : class, IWorkflowInput
+        where TInput : class, IWorkflowRequest
     {
         return JsonSerializer.Deserialize<TInput>(requestBody) ??
                throw new ArgumentException(
-                   "The request body is not a valid JSON representation of a IWorkflowInput object.",
+                   $"The request body is not a valid JSON representation of a {nameof(IWorkflowRequest)} object.",
                    nameof(requestBody));
     }
 

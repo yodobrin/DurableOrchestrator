@@ -18,14 +18,14 @@ public static class KeyVaultExtensions
     /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
     public static IServiceCollection AddKeyVault(this IServiceCollection services, IConfiguration configuration)
     {
-        var keyVaultSettings = KeyVaultSettings.FromConfiguration(configuration);
-        services.AddScoped(_ => keyVaultSettings);
+        var settings = KeyVaultSettings.FromConfiguration(configuration);
+        services.AddScoped(_ => settings);
 
         services.AddSingleton(sp =>
         {
             var credentials = sp.GetRequiredService<DefaultAzureCredential>();
 
-            return new SecretClient(new Uri(keyVaultSettings.KeyVaultUrl), credentials);
+            return new SecretClient(new Uri(settings.KeyVaultUrl), credentials);
         });
 
         return services;

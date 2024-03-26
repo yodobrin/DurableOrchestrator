@@ -1,9 +1,10 @@
 using DurableOrchestrator.AzureStorage;
+using DurableOrchestrator.AzureTextAnalytics;
 using DurableOrchestrator.Core;
 
 namespace DurableOrchestrator.Models;
 
-public class WorkFlowInput : IWorkflowInput
+public class WorkFlowInput : IWorkflowRequest
 {
     [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
 
@@ -12,10 +13,10 @@ public class WorkFlowInput : IWorkflowInput
     [JsonPropertyName("destination")] public string Destination { get; set; } = string.Empty;
 
     [JsonPropertyName("sourceBlobStorageInfo")]
-    public BlobStorageInfo? SourceBlobStorageInfo { get; set; }
+    public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
 
     [JsonPropertyName("targetBlobStorageInfo")]
-    public BlobStorageInfo? TargetBlobStorageInfo { get; set; }
+    public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
 
     [JsonPropertyName("textAnalyticsRequests")]
     public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new();

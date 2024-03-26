@@ -1,5 +1,4 @@
 using System.Text;
-using Azure.Storage.Blobs;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 using Microsoft.Azure.Functions.Worker;
@@ -11,7 +10,7 @@ namespace DurableOrchestrator.AzureStorage;
 /// <summary>
 /// Defines a collection of activities for interacting with Azure Blob Storage.
 /// </summary>
-/// <param name="blobServiceClientFactory">The source and target <see cref="BlobServiceClient"/> instances.</param>
+/// <param name="blobServiceClientFactory">The <see cref="BlobServiceClientFactory"/> instance used to interact with Azure Storage accounts.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
 [ActivitySource(nameof(BlobStorageActivities))]
 public class BlobStorageActivities(
@@ -20,21 +19,25 @@ public class BlobStorageActivities(
     : BaseActivity(nameof(BlobStorageActivities))
 {
     /// <summary>
-    /// Retrieves the content of a blob as a string. Validates the input before attempting to read the blob's content.
+    /// Retrieves the content of a blob as a string from Azure Storage.
     /// </summary>
-    /// <param name="input">Blob storage information including container and blob names.</param>
-    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
-    /// <returns>The content of the specified blob as a string, or null if the operation fails.</returns>
+    /// <param name="input">The blob storage information including storage account, container, and blob name.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
+    /// <returns>The content of the specified blob as a string.</returns>
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
+    /// <exception cref="Exception">Thrown when an unhandled error occurs during the operation.</exception>
     [Function(nameof(GetBlobContentAsString))]
     public async Task<string?> GetBlobContentAsString(
-        [ActivityTrigger] BlobStorageInfo input,
+        [ActivityTrigger] BlobStorageRequest input,
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(GetBlobContentAsString), input);
 
-        if (!ValidateInput(input, logger, checkContent: false))
+        var validationResult = input.Validate(checkContent: false);
+        if (!validationResult.IsValid)
         {
-            throw new ArgumentException("Invalid input", nameof(input));
+            throw new ArgumentException(
+                $"{nameof(GetBlobContentAsString)}::{nameof(input)} is invalid. {validationResult}");
         }
 
         try
@@ -49,7 +52,7 @@ public class BlobStorageActivities(
         }
         catch (Exception ex)
         {
-            logger.LogError("Error in GetBlobContentAsString: {Message}", ex.Message);
+            logger.LogError("{Activity} failed. {Error}", nameof(GetBlobContentAsString), ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -59,26 +62,33 @@ public class BlobStorageActivities(
     }
 
     /// <summary>
-    /// Retrieves the content of a blob as a byte array. Validates the input before attempting to read the blob's content.
+    /// Retrieves the content of a blob as a byte array from Azure Storage.
     /// </summary>
-    /// <param name="input">Blob storage information including container and blob names.</param>
-    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
-    /// <returns>The content of the specified blob as a byte array, or null if the operation fails.</returns>
+    /// <param name="input">The blob storage information including storage account, container, and blob name.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
+    /// <returns>The content of the specified blob as a byte array.</returns>
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
+    /// <exception cref="Exception">Thrown when an unhandled error occurs during the operation.</exception>
     [Function(nameof(GetBlobContentAsBuffer))]
     public async Task<byte[]?> GetBlobContentAsBuffer(
-        [ActivityTrigger] BlobStorageInfo input,
+        [ActivityTrigger] BlobStorageRequest input,
         FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(GetBlobContentAsBuffer), input);
 
-        if (!ValidateInput(input, logger, checkContent: false))
+        var validationResult = input.Validate(checkContent: false);
+        if (!validationResult.IsValid)
         {
-            throw new ArgumentException("Invalid input", nameof(input));
+            throw new ArgumentException(
+                $"{nameof(GetBlobContentAsBuffer)}::{nameof(input)} is invalid. {validationResult}");
         }
 
         try
         {
-            logger.LogInformation($"trying to read content of {input.BlobName} in container {input.ContainerName}");
+            logger.LogInformation(
+                "Attempting to read content of {BlobName} in container {ContainerName}",
+                input.BlobName,
+                input.ContainerName);
 
             var blobClient = blobServiceClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
@@ -91,7 +101,7 @@ public class BlobStorageActivities(
         }
         catch (Exception ex)
         {
-            logger.LogError("Error in GetBlobContentAsBuffer: {Message}", ex.Message);
+            logger.LogError("{Activity} failed. {Error}", nameof(GetBlobContentAsBuffer), ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -101,18 +111,24 @@ public class BlobStorageActivities(
     }
 
     /// <summary>
-    /// Writes a string to a blob. Validates the input before writing the content to the blob.
+    /// Writes a string to a blob in Azure Storage.
     /// </summary>
-    /// <param name="input">Blob storage information including container and blob names, along with the content to write.</param>
-    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
+    /// <remarks>
+    /// Validates the input content is provided before writing the content to the blob.
+    /// </remarks>
+    /// <param name="input">The blob storage information including the content, storage account, container, and blob name.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
     [Function(nameof(WriteStringToBlob))]
-    public async Task WriteStringToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
+    public async Task WriteStringToBlob([ActivityTrigger] BlobStorageRequest input, FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(WriteStringToBlob), input);
 
-        if (!ValidateInput(input, logger))
+        var validationResult = input.Validate(checkContent: true);
+        if (!validationResult.IsValid)
         {
-            return;
+            throw new ArgumentException(
+                $"{nameof(WriteStringToBlob)}::{nameof(input)} is invalid. {validationResult}");
         }
 
         try
@@ -128,12 +144,15 @@ public class BlobStorageActivities(
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(input.Content));
             await blobClient.UploadAsync(stream, overwrite: true);
-            logger.LogInformation("Successfully uploaded content to blob: {BlobName} in container: {ContainerName}",
-                input.BlobName, input.ContainerName);
+
+            logger.LogInformation(
+                "Successfully uploaded content to {BlobName} in container {ContainerName}",
+                input.BlobName,
+                input.ContainerName);
         }
         catch (Exception ex)
         {
-            logger.LogError("Error in WriteStringToBlob: {Message}", ex.Message);
+            logger.LogError("{Activity} failed. {Error}", nameof(WriteStringToBlob), ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
@@ -141,23 +160,29 @@ public class BlobStorageActivities(
     }
 
     /// <summary>
-    /// Writes a byte array to a blob. Validates the input before writing the buffer to the blob.
+    /// Writes a byte array to a blob in Azure Storage.
     /// </summary>
-    /// <param name="input">Blob storage information including container and blob names, along with the buffer to write.</param>
-    /// <param name="executionContext">Function execution context for logging and telemetry.</param>
+    /// <param name="input">The blob storage information including the buffer byte array, storage account, container, and blob name.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
     [Function(nameof(WriteBufferToBlob))]
-    public async Task WriteBufferToBlob([ActivityTrigger] BlobStorageInfo input, FunctionContext executionContext)
+    public async Task WriteBufferToBlob([ActivityTrigger] BlobStorageRequest input, FunctionContext executionContext)
     {
         using var span = StartActiveSpan(nameof(WriteBufferToBlob), input);
 
-        if (!ValidateInput(input, logger, checkContent: false))
+        var validationResult = input.Validate(checkContent: false);
+        if (!validationResult.IsValid)
         {
-            return;
+            throw new ArgumentException(
+                $"{nameof(WriteBufferToBlob)}::{nameof(input)} is invalid. {validationResult}");
         }
 
         try
         {
-            logger.LogInformation($"trying to write to {input.ContainerName} to a file named: {input.BlobName}");
+            logger.LogInformation(
+                "Attempting to write buffer to {BlobName} in container {ContainerName}",
+                input.BlobName,
+                input.ContainerName);
 
             var blobContainerClient = blobServiceClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
@@ -170,34 +195,18 @@ public class BlobStorageActivities(
 
             using var stream = new MemoryStream(input.Buffer);
             await blobClient.UploadAsync(stream, overwrite: true);
+
             logger.LogInformation(
-                $"Successfully uploaded buffer to blob: {input.BlobName} in container: {input.ContainerName}",
-                input.BlobName, input.ContainerName);
+                "Successfully uploaded buffer to {BlobName} in container {ContainerName}",
+                input.BlobName,
+                input.ContainerName);
         }
         catch (Exception ex)
         {
-            logger.LogError("Error in WriteBufferToBlob: {Message}", ex.Message);
+            logger.LogError("{Activity} failed. {Error}", nameof(WriteBufferToBlob), ex.Message);
 
             span.SetStatus(Status.Error);
             span.RecordException(ex);
         }
-    }
-
-    /// <summary>
-    /// Validates the blob storage input, optionally checking if the content is not null or whitespace when required.
-    /// </summary>
-    /// <param name="input">The blob storage information to validate.</param>
-    /// <param name="log">Logger for logging warnings in case of invalid inputs.</param>
-    /// <param name="checkContent">Flag indicating whether to check the content for null or whitespace.</param>
-    /// <returns>True if the input is valid, otherwise false.</returns>
-    private static bool ValidateInput(BlobStorageInfo input, ILogger log, bool checkContent = true)
-    {
-        if (!checkContent || !string.IsNullOrWhiteSpace(input.Content))
-        {
-            return true;
-        }
-
-        log.LogWarning("Content is null or whitespace.");
-        return false;
     }
 }

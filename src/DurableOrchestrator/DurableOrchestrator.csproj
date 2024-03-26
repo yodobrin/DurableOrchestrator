@@ -7,9 +7,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0-beta.2" />
-    <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.15" />
-    <PackageReference Include="Azure.AI.TextAnalytics" Version="5.3.0" />
     <PackageReference Include="Azure.Identity" Version="1.10.4" />
     <PackageReference Include="Contrib.Grpc.Core.M1" Version="2.41.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     <PackageReference Include="itext7" Version="8.0.3" />
@@ -20,8 +17,11 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\DurableOrchestrator.AzureDocumentIntelligence\DurableOrchestrator.AzureDocumentIntelligence.csproj" />
     <ProjectReference Include="..\DurableOrchestrator.AzureKeyVault\DurableOrchestrator.AzureKeyVault.csproj" />
+    <ProjectReference Include="..\DurableOrchestrator.AzureOpenAI\DurableOrchestrator.AzureOpenAI.csproj" />
     <ProjectReference Include="..\DurableOrchestrator.AzureStorage\DurableOrchestrator.AzureStorage.csproj" />
+    <ProjectReference Include="..\DurableOrchestrator.AzureTextAnalytics\DurableOrchestrator.AzureTextAnalytics.csproj" />
     <ProjectReference Include="..\DurableOrchestrator.Core\DurableOrchestrator.Core.csproj" />
   </ItemGroup>
   <ItemGroup>

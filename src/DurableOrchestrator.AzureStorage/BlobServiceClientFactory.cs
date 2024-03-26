@@ -4,13 +4,13 @@ using Azure.Storage.Blobs;
 namespace DurableOrchestrator.AzureStorage;
 
 /// <summary>
-/// Defines a wrapper for a source and target <see cref="BlobServiceClient"/>.
+/// Defines a factory for creating <see cref="BlobServiceClient"/> instances.
 /// </summary>
 /// <param name="azureCredential">The Azure credential to use for authentication with Azure Blob Storage clients.</param>
 public class BlobServiceClientFactory(DefaultAzureCredential azureCredential)
 {
     /// <summary>
-    /// Retrieves a <see cref="BlobServiceClient"/> for the specified storage account name
+    /// Retrieves a <see cref="BlobServiceClient"/> for the specified storage account name.
     /// </summary>
     /// <remarks>
     /// If the specified storage account name is a development storage account (i.e., devstoreaccount1 or UseDevelopmentStorage), the client will be created using the development storage connection string.

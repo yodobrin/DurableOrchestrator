@@ -97,7 +97,7 @@ public class SplitPdfWorkflow()
         var writeTasks = new List<Task>();
         for (int i = 0; i < splitResults.Count; i++)
         {
-            var blobStorageInfo = new BlobStorageInfo
+            var blobStorageInfo = new BlobStorageRequest
             {
                 StorageAccountName = workFlowInput.TargetBlobStorageInfo!.StorageAccountName,
                 ContainerName = workFlowInput.TargetBlobStorageInfo!.ContainerName,
