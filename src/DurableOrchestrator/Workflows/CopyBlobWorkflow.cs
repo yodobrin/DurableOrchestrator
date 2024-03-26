@@ -1,7 +1,6 @@
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
-using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -22,33 +21,33 @@ public class CopyBlobWorkflow()
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var workFlowInput = context.GetInput<WorkFlowInput>() ??
-                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkFlowInput)} is null.");
+        var input = context.GetInput<WorkflowRequest>() ??
+                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
 
-        using var span = StartActiveSpan(OrchestrationName, workFlowInput);
+        using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
 
         var orchestrationResults = new WorkflowResult(OrchestrationName, log);
 
         // step 2: validate the input
-        var validationResult = workFlowInput.Validate();
+        var validationResult = input.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(IWorkflowRequest.Validate),
-                $"{nameof(workFlowInput)} is invalid.",
+                nameof(WorkflowRequest.Validate),
+                $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(IWorkflowRequest.Validate), $"{nameof(workFlowInput)} is valid.");
+        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3: get blob content to be copied
         var blobContent = await CallActivityAsync<byte[]?>(
             context,
             nameof(BlobStorageActivities.GetBlobContentAsBuffer),
-            workFlowInput.SourceBlobStorageInfo!,
+            input.SourceBlobStorageInfo!,
             span.Context);
 
         if (blobContent == null || blobContent.Length == 0)
@@ -61,14 +60,14 @@ public class CopyBlobWorkflow()
         }
 
         // step 4: write to another blob
-        workFlowInput.TargetBlobStorageInfo!.Buffer = blobContent;
+        input.TargetBlobStorageInfo!.Buffer = blobContent;
 
         try
         {
             await CallActivityAsync<string>(
                 context,
                 nameof(BlobStorageActivities.WriteBufferToBlob),
-                workFlowInput.TargetBlobStorageInfo,
+                input.TargetBlobStorageInfo,
                 span.Context);
 
             orchestrationResults.Add(
@@ -115,11 +114,76 @@ public class CopyBlobWorkflow()
         var instanceId = await StartWorkflowAsync(
             starter,
             OrchestrationName,
-            ExtractInput<WorkFlowInput>(requestBody),
+            ExtractInput<WorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
+    }
+
+    public class WorkflowRequest : IWorkflowRequest
+    {
+        [JsonPropertyName("sourceBlobStorageInfo")]
+        public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
+
+        [JsonPropertyName("targetBlobStorageInfo")]
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
+
+        [JsonPropertyName("observableProperties")]
+        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
+
+        public ValidationResult Validate()
+        {
+            var result = new ValidationResult();
+
+            if (SourceBlobStorageInfo == null)
+            {
+                result.AddErrorMessage("Source blob storage info is missing.");
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(SourceBlobStorageInfo.BlobName))
+                {
+                    // could be missing - not breaking the validity of the request
+                    result.AddMessage("Source blob name is missing.");
+                }
+
+                if (string.IsNullOrEmpty(SourceBlobStorageInfo.ContainerName))
+                {
+                    result.AddErrorMessage("Source container name is missing.");
+                }
+
+                if (string.IsNullOrEmpty(SourceBlobStorageInfo.StorageAccountName))
+                {
+                    result.AddErrorMessage("Source storage account name is missing.");
+                }
+            }
+
+            if (TargetBlobStorageInfo == null)
+            {
+                result.AddErrorMessage("Target blob storage info is missing.");
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
+                {
+                    // could be missing - not breaking the validity of the request
+                    result.AddMessage("Target blob name is missing.");
+                }
+
+                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
+                {
+                    result.AddErrorMessage("Target container name is missing.");
+                }
+
+                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
+                {
+                    result.AddErrorMessage("Target storage account name is missing.");
+                }
+            }
+
+            return result;
+        }
     }
 }

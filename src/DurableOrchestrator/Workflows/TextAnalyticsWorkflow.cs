@@ -2,7 +2,6 @@ using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.AzureTextAnalytics;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
-using DurableOrchestrator.Models;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -23,31 +22,31 @@ public class TextAnalyticsWorkflow()
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var workFlowInput = context.GetInput<WorkFlowInput>() ??
-                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkFlowInput)} is null.");
+        var input = context.GetInput<WorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
 
-        using var span = StartActiveSpan(OrchestrationName, workFlowInput);
+        using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
 
         var orchestrationResults = new WorkflowResult(OrchestrationName, log);
 
         // step 2: validate the input
-        var validationResult = workFlowInput.Validate();
+        var validationResult = input.Validate();
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(IWorkflowRequest.Validate),
-                $"{nameof(workFlowInput)} is invalid.",
+                nameof(WorkflowRequest.Validate),
+                $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(IWorkflowRequest.Validate), $"{nameof(workFlowInput)} is valid.");
+        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3:
         // call the sentiment analysis activity for each text analytics request - fan-out/fan-in
-        var sentimentTasks = workFlowInput.TextAnalyticsRequests!.Select(
+        var sentimentTasks = input.TextAnalyticsRequests!.Select(
                 request =>
                     CallActivityAsync<string?>(
                         context,
@@ -72,11 +71,11 @@ public class TextAnalyticsWorkflow()
 
         // step 4: create a new file, and save the sentiments gathered from the text analytics together with the original text to blob storage
         var analysisResults = new TextSentimentResults();
-        for (var i = 0; i < workFlowInput.TextAnalyticsRequests!.Count; i++)
+        for (var i = 0; i < input.TextAnalyticsRequests!.Count; i++)
         {
             analysisResults.Results.Add(new TextSentimentResult
             {
-                OriginalText = workFlowInput.TextAnalyticsRequests[i].TextsToAnalyze,
+                OriginalText = input.TextAnalyticsRequests[i].TextsToAnalyze,
                 Sentiment = sentiments[i] ?? "Error"
             });
         }
@@ -91,14 +90,14 @@ public class TextAnalyticsWorkflow()
             return orchestrationResults.Results; // Exit the orchestration due to missing blob content
         }
 
-        workFlowInput.TargetBlobStorageInfo!.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
+        input.TargetBlobStorageInfo!.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
 
         try
         {
             await CallActivityAsync<string>(
                 context,
                 nameof(BlobStorageActivities.WriteBufferToBlob),
-                workFlowInput.TargetBlobStorageInfo!,
+                input.TargetBlobStorageInfo!,
                 span.Context);
 
             orchestrationResults.Add(
@@ -145,11 +144,73 @@ public class TextAnalyticsWorkflow()
         var instanceId = await StartWorkflowAsync(
             starter,
             OrchestrationName,
-            ExtractInput<WorkFlowInput>(requestBody),
+            ExtractInput<WorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
+    }
+
+    public class WorkflowRequest : IWorkflowRequest
+    {
+        [JsonPropertyName("targetBlobStorageInfo")]
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
+
+        [JsonPropertyName("textAnalyticsRequests")]
+        public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new();
+
+        [JsonPropertyName("observableProperties")]
+        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
+
+        public ValidationResult Validate()
+        {
+            var result = new ValidationResult();
+
+            if (TargetBlobStorageInfo == null)
+            {
+                result.AddErrorMessage("Target blob storage info is missing.");
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
+                {
+                    result.AddMessage("Target blob name is missing.");
+                }
+
+                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
+                {
+                    result.AddErrorMessage("Target container name is missing.");
+                }
+
+                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
+                {
+                    result.AddErrorMessage("Target storage account name is missing.");
+                }
+            }
+
+            if (TextAnalyticsRequests == null || TextAnalyticsRequests.Count == 0)
+            {
+                result.AddMessage("Text analytics requests are missing.");
+            }
+            else
+            {
+                // only if the individual list is empty -> request is not valid
+                foreach (var request in TextAnalyticsRequests)
+                {
+                    if (string.IsNullOrEmpty(request.TextsToAnalyze))
+                    {
+                        result.AddErrorMessage("Texts to analyze are missing for a text analytics request.");
+                    }
+
+                    if (request.OperationTypes == null || request.OperationTypes.Count == 0)
+                    {
+                        result.AddErrorMessage("Operation types are missing for a text analytics request.");
+                    }
+                }
+            }
+
+            return result;
+        }
     }
 }
