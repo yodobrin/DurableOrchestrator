@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace DurableOrchestrator.Core.Observability;
 
 /// <summary>
@@ -8,12 +10,12 @@ namespace DurableOrchestrator.Core.Observability;
 /// </remarks>
 /// <param name="name">The name of the activity source.</param>
 [AttributeUsage(AttributeTargets.Class)]
-public class ActivitySourceAttribute(string name) : Attribute
+public class ActivitySourceAttribute([CallerFilePath] string name = "") : Attribute
 {
     /// <summary>
     /// Gets the name of the activity source.
     /// </summary>
-    public string Name { get; } = name;
+    public string Name { get; } = Path.GetFileNameWithoutExtension(name);
 
     internal static IEnumerable<string> GetActivitySourceNames()
     {

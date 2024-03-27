@@ -12,7 +12,7 @@ namespace DurableOrchestrator.AzureTextAnalytics;
 /// </summary>
 /// <param name="client">The <see cref="TextAnalyticsClient"/> instance used to interact with Azure AI Text Analytics.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
-[ActivitySource(nameof(TextAnalyticsActivities))]
+[ActivitySource]
 public class TextAnalyticsActivities(
     TextAnalyticsClient client,
     ILogger<TextAnalyticsActivities> logger)

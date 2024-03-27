@@ -5,11 +5,10 @@ using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
-[ActivitySource(nameof(KeyVaultSecretToBlobWorkflow))]
-public class KeyVaultSecretToBlobWorkflow()
-    : BaseWorkflow(nameof(KeyVaultSecretToBlobWorkflow))
+[ActivitySource]
+public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
 {
-    private const string OrchestrationName = "KeyVaultSecretToBlobWorkflow";
+    private const string OrchestrationName = nameof(KeyVaultSecretToBlobWorkflow);
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
 
     [Function(OrchestrationName)]
@@ -121,7 +120,6 @@ public class KeyVaultSecretToBlobWorkflow()
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            OrchestrationName,
             ExtractInput<WorkflowRequest>(requestBody),
             span.Context);
 
@@ -130,22 +128,16 @@ public class KeyVaultSecretToBlobWorkflow()
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : IWorkflowRequest
+    public class WorkflowRequest : BaseWorkflowRequest
     {
         [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
 
         [JsonPropertyName("sourceBlobStorageInfo")]
         public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
 
-        [JsonPropertyName("targetBlobStorageInfo")]
-        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
-
-        [JsonPropertyName("observableProperties")]
-        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
-
-        public ValidationResult Validate()
+        public override ValidationResult Validate()
         {
-            var result = new ValidationResult();
+            var result = base.Validate();
 
             if (string.IsNullOrEmpty(Name))
             {
@@ -172,28 +164,6 @@ public class KeyVaultSecretToBlobWorkflow()
                 if (string.IsNullOrEmpty(SourceBlobStorageInfo.StorageAccountName))
                 {
                     result.AddErrorMessage("Source storage account name is missing.");
-                }
-            }
-
-            if (TargetBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Target blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
-                {
-                    result.AddMessage("Target blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Target container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Target storage account name is missing.");
                 }
             }
 

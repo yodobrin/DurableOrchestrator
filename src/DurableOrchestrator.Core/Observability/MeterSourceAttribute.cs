@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace DurableOrchestrator.Core.Observability;
 
 /// <summary>
@@ -8,12 +10,12 @@ namespace DurableOrchestrator.Core.Observability;
 /// </remarks>
 /// <param name="name">The name of the meter source.</param>
 [AttributeUsage(AttributeTargets.Class)]
-public class MeterSourceAttribute(string name) : Attribute
+public class MeterSourceAttribute([CallerFilePath] string name = "") : Attribute
 {
     /// <summary>
     /// Gets the name of the meter.
     /// </summary>
-    public string Name { get; } = name;
+    public string Name { get; } = Path.GetFileNameWithoutExtension(name);
 
     internal static IEnumerable<string> GetMeterSourceNames()
     {

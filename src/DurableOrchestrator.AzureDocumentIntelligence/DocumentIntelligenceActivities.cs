@@ -14,7 +14,7 @@ namespace DurableOrchestrator.AzureDocumentIntelligence;
 /// </summary>
 /// <param name="client">The <see cref="DocumentIntelligenceClient"/> instance used to interact with Azure AI Document Intelligence.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
-[ActivitySource(nameof(DocumentIntelligenceActivities))]
+[ActivitySource]
 public class DocumentIntelligenceActivities(
     DocumentIntelligenceClient client,
     ILogger<DocumentIntelligenceActivities> logger)

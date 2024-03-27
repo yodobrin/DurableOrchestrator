@@ -9,7 +9,7 @@ using OpenTelemetry.Trace;
 
 namespace DurableOrchestrator.AzureOpenAI;
 
-[ActivitySource(nameof(OpenAIActivities))]
+[ActivitySource]
 public class OpenAIActivities(
     OpenAIClient client,
     ILogger<OpenAIActivities> log)

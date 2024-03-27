@@ -1,19 +1,16 @@
 using DurableOrchestrator.AzureOpenAI;
 using DurableOrchestrator.AzureStorage;
-using DurableOrchestrator.AzureTextAnalytics;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
-[ActivitySource(nameof(TextAnalyticsWorkflow))]
-public class EmbedTextWorkFlow()
-    : BaseWorkflow(nameof(EmbedTextWorkFlow))
+[ActivitySource]
+public class EmbedTextWorkFlow() : BaseWorkflow(OrchestrationName)
 {
-    private const string OrchestrationName = "EmbedTextWorkFlow";
+    private const string OrchestrationName = nameof(EmbedTextWorkFlow);
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
 
-    
     [Function(OrchestrationName)]
     public async Task<List<string>> RunOrchestrator(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -44,30 +41,37 @@ public class EmbedTextWorkFlow()
         // step 3:
         // calling OpenAIActivity to embed the text, first need to create the request
 
-        OpenAIRequest openAIRequest = new OpenAIRequest
+        var openAIRequest = new OpenAIRequest
         {
             EmbeddedDeployment = input.EmbeddedDeployment,
             OpenAIOperation = OpenAIOperation.Embedding,
             Text2Embed = input.Text2Embed
         };
 
-        float[] embeddings = await CallActivityAsync<float[]>(context, nameof(OpenAIActivities.EmbeddText), openAIRequest, span.Context);
+        var embeddings = await CallActivityAsync<float[]>(
+            context,
+            nameof(OpenAIActivities.EmbeddText),
+            openAIRequest,
+            span.Context);
 
         // lets write the embedding to a file as well
         var options = new JsonSerializerOptions { WriteIndented = true };
-        byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(embeddings, options);
+        var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(embeddings, options);
 
         var embeddingBlobStorageInfo = input.TargetBlobStorageInfo!;
         // override the blob name and the content
         embeddingBlobStorageInfo.BlobName = $"{input.TargetBlobStorageInfo!.BlobName}_embeddings.json";
         embeddingBlobStorageInfo.Buffer = jsonBytes;
         // embeddingBlobStorageInfo.InjectTracingContext(span.Context);
-        await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), embeddingBlobStorageInfo);
+        await CallActivityAsync<string>(
+            context,
+            nameof(BlobStorageActivities.WriteBufferToBlob),
+            embeddingBlobStorageInfo,
+            span.Context);
 
         return orchestrationResults.Results;
     }
 
-  
     [Function(OrchestrationTriggerName)]
     public async Task<HttpResponseData> HttpStart(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")]
@@ -88,7 +92,6 @@ public class EmbedTextWorkFlow()
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            OrchestrationName,
             ExtractInput<WorkflowRequest>(requestBody),
             span.Context);
 
@@ -97,52 +100,27 @@ public class EmbedTextWorkFlow()
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : IWorkflowRequest
+    public class WorkflowRequest : BaseWorkflowRequest
     {
         [JsonPropertyName("embeddedDeployment")]
         public string EmbeddedDeployment { get; set; } = string.Empty;
-        
-        [JsonPropertyName("targetBlobStorageInfo")]
-        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
 
-        [JsonPropertyName("text2embed")]
-        public string Text2Embed { get; set; } = string.Empty;
+        [JsonPropertyName("text2embed")] public string Text2Embed { get; set; } = string.Empty;
 
-        [JsonPropertyName("observableProperties")]
-        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
-
-        public ValidationResult Validate()
+        public override ValidationResult Validate()
         {
-            var result = new ValidationResult();
-            if(string.IsNullOrEmpty(EmbeddedDeployment))
+            var result = base.Validate();
+
+            if (string.IsNullOrEmpty(EmbeddedDeployment))
             {
                 result.AddErrorMessage("Embedded deployment is missing.");
             }
-            if(string.IsNullOrWhiteSpace(Text2Embed))
+
+            if (string.IsNullOrWhiteSpace(Text2Embed))
             {
                 result.AddErrorMessage("Text to embed is missing.");
             }
-            if (TargetBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Target blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
-                {
-                    result.AddMessage("Target blob name is missing.");
-                }
 
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Target container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Target storage account name is missing.");
-                }
-            }
             return result;
         }
     }

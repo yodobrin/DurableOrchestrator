@@ -12,7 +12,7 @@ namespace DurableOrchestrator.AzureStorage;
 /// </summary>
 /// <param name="blobServiceClientFactory">The <see cref="BlobServiceClientFactory"/> instance used to interact with Azure Storage accounts.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
-[ActivitySource(nameof(BlobStorageActivities))]
+[ActivitySource]
 public class BlobStorageActivities(
     BlobServiceClientFactory blobServiceClientFactory,
     ILogger<BlobStorageActivities> logger)

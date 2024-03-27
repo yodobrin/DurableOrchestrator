@@ -10,9 +10,14 @@ namespace DurableOrchestrator.Core;
 /// Defines a base class for all workflow classes.
 /// </summary>
 /// <param name="name">The name of the workflow used for observability.</param>
-[ActivitySource(nameof(BaseWorkflow))]
+[ActivitySource]
 public abstract class BaseWorkflow(string name)
 {
+    /// <summary>
+    /// Gets the name of the workflow.
+    /// </summary>
+    protected string Name { get; } = name;
+
     /// <summary>
     /// Defines the tracer for the workflow.
     /// </summary>
@@ -22,14 +27,12 @@ public abstract class BaseWorkflow(string name)
     /// Starts a new workflow instance from the request of a durable function.
     /// </summary>
     /// <param name="durableFunctionClient">The durable function client used to start the workflow.</param>
-    /// <param name="workflowName">The name of the workflow to start.</param>
     /// <param name="input">The input for the workflow.</param>
     /// <param name="spanContext">The parent span context for the workflow.</param>
     /// <param name="cancellationToken">An optional cancellation token for the operation.</param>
     /// <returns>A task representing the asynchronous operation that returns the ID of the started workflow instance.</returns>
     protected Task<string> StartWorkflowAsync(
         DurableTaskClient durableFunctionClient,
-        string workflowName,
         IWorkflowRequest input,
         SpanContext spanContext = default,
         CancellationToken cancellationToken = default)
@@ -39,7 +42,7 @@ public abstract class BaseWorkflow(string name)
             input.InjectObservabilityContext(spanContext);
         }
 
-        return durableFunctionClient.ScheduleNewOrchestrationInstanceAsync(workflowName, input, cancellation: cancellationToken);
+        return durableFunctionClient.ScheduleNewOrchestrationInstanceAsync(Name, input, cancellation: cancellationToken);
     }
 
     /// <summary>
@@ -129,13 +132,13 @@ public abstract class BaseWorkflow(string name)
     /// <summary>
     /// Starts a span for the workflow and makes it the active span.
     /// </summary>
-    /// <param name="name">The name of the workflow span.</param>
+    /// <param name="spanName">The name of the workflow span.</param>
     /// <param name="context">The observability context for the workflow.</param>
     /// <returns>A new active span for the workflow.</returns>
-    protected TelemetrySpan StartActiveSpan(string name, IObservabilityContext? context = default)
+    protected TelemetrySpan StartActiveSpan(string spanName, IObservabilityContext? context = default)
     {
         return context != default
-            ? Tracer.StartActiveSpan(name, SpanKind.Internal, context.ExtractObservabilityContext())
-            : Tracer.StartActiveSpan(name);
+            ? Tracer.StartActiveSpan(spanName, SpanKind.Internal, context.ExtractObservabilityContext())
+            : Tracer.StartActiveSpan(spanName);
     }
 }

@@ -12,7 +12,7 @@ namespace DurableOrchestrator.AzureKeyVault;
 /// </summary>
 /// <param name="client">The <see cref="SecretClient"/> instance used to interact with Azure Key Vault.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
-[ActivitySource(nameof(KeyVaultActivities))]
+[ActivitySource]
 public class KeyVaultActivities(
     SecretClient client,
     ILogger<KeyVaultActivities> logger)

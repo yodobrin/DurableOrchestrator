@@ -5,11 +5,10 @@ using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
-[ActivitySource(nameof(TextAnalyticsWorkflow))]
-public class TextAnalyticsWorkflow()
-    : BaseWorkflow(nameof(TextAnalyticsWorkflow))
+[ActivitySource]
+public class TextAnalyticsWorkflow() : BaseWorkflow(OrchestrationName)
 {
-    private const string OrchestrationName = "TextAnalyticsWorkflow";
+    private const string OrchestrationName = nameof(TextAnalyticsWorkflow);
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
 
     /// <summary>
@@ -143,7 +142,6 @@ public class TextAnalyticsWorkflow()
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            OrchestrationName,
             ExtractInput<WorkflowRequest>(requestBody),
             span.Context);
 
@@ -152,42 +150,14 @@ public class TextAnalyticsWorkflow()
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : IWorkflowRequest
+    public class WorkflowRequest : BaseWorkflowRequest
     {
-        [JsonPropertyName("targetBlobStorageInfo")]
-        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
-
         [JsonPropertyName("textAnalyticsRequests")]
         public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new();
 
-        [JsonPropertyName("observableProperties")]
-        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
-
-        public ValidationResult Validate()
+        public override ValidationResult Validate()
         {
-            var result = new ValidationResult();
-
-            if (TargetBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Target blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
-                {
-                    result.AddMessage("Target blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Target container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Target storage account name is missing.");
-                }
-            }
+            var result = base.Validate();
 
             if (TextAnalyticsRequests == null || TextAnalyticsRequests.Count == 0)
             {

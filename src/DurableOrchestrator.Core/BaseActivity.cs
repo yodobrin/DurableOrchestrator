@@ -7,7 +7,7 @@ namespace DurableOrchestrator.Core;
 /// Defines the base class for all activity classes.
 /// </summary>
 /// <param name="name">The name of the activity used for observability.</param>
-[ActivitySource(nameof(BaseActivity))]
+[ActivitySource]
 public abstract class BaseActivity(string name)
 {
     /// <summary>
