@@ -236,3 +236,30 @@ POST http://localhost:7071/api/DILayout2mdWorkFlow_HttpStart
     "containerName": "docintelout"
   }
 }
+
+### calling Sentiment + embedding
+// emedd-ada-002
+POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
+
+{
+  "name": "emedd-ada-002",
+  "source": "sourceIdentifier",
+  "destination": "destinationIdentifier",
+  "sourceBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "functions.csv",
+    "containerName": "sourcecontainer"
+  },
+  "targetBlobStorageInfo": {
+    "storageAccountName": "ydinventorylogs",
+    "blobName": "sentiments3.26.1747.json",
+    "containerName": "targetcontainer"
+  },
+  "textAnalyticsRequests": [
+    {
+      "operationTypes": ["sentiment", "keyPhrases"],
+      "textsToAnalyze": "I absolutely love the new update! Everything is faster and more intuitive."
+    }
+  ]
+}
+

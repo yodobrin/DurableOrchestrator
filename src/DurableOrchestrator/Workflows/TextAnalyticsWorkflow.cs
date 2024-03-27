@@ -1,6 +1,7 @@
 using DurableOrchestrator.AI;
 using DurableOrchestrator.Models;
 using DurableOrchestrator.Storage;
+using Azure.AI.OpenAI;
 
 namespace DurableOrchestrator.Workflows;
 
@@ -46,6 +47,10 @@ public class TextAnalyticsWorkflow()
         // step 3:
         // call the sentiment analysis activity for each text analytics request - fan-out/fan-in
         var sentimentTasks = new List<Task<string?>>();
+        // now lets fan-out an openAI call to get the text embeddings (for the same text)
+        var embeddingTasks = new List<Task<float[]>>();
+        string embeddingDeploymentName = workFlowInput.Name;
+        log.LogInformation($"TextAnalyticsWorkflow:: embeddingDeploymentName: {embeddingDeploymentName}");
         // both workflowinput and textanalyticsrequests are not null - checked above
         foreach (var request in workFlowInput!.TextAnalyticsRequests!)
         {
@@ -53,18 +58,34 @@ public class TextAnalyticsWorkflow()
             request.InjectTracingContext(span.Context);
             var task = context.CallActivityAsync<string?>(nameof(TextAnalyticsActivities.GetSentiment), request);
             sentimentTasks.Add(task);
+            // calling the openAI activity to get the embeddings, would require the creation of the proper request and embedding options            
+            var openAIRequest = new OpenAIRequest
+            {
+                OpenAIOperation = OpenAIOperation.Embedding,
+                EmbeddedDeployment = embeddingDeploymentName,
+                Text2Embed = request.TextsToAnalyze
+            };
+            openAIRequest.InjectTracingContext(span.Context);
+            var embeddingTask = context.CallActivityAsync<float[]>(nameof(OpenAIActivities.EmbeddText), openAIRequest);
+            embeddingTasks.Add(embeddingTask);
         }
 
-        // Fan-in: Wait for all sentiment analysis tasks to complete
+        // Fan-in: Wait for all sentiment analysis && embedding tasks to complete
         await Task.WhenAll(sentimentTasks);
+        await Task.WhenAll(embeddingTasks);
         // Collect results
         var sentiments = new List<string?>();
         foreach (var task in sentimentTasks)
         {
-            sentiments.Add(await task); // Here, you could handle nulls or errors as needed
+            sentiments.Add(await task);
         }
-
+        var embeddings = new List<float[]>();
+        foreach (var task in embeddingTasks)
+        {
+            embeddings.Add(await task);
+        }
         orchestrationResults.Add("TextAnalyticsWorkflow::Sentiment analysis completed.");
+        orchestrationResults.Add("TextAnalyticsWorkflow::Embedding analysis completed.");
         // create a new file, and save the sentiments gathered from the text analytics together with the original text
         var analysisResults = new AnalysisResults();
         for (var i = 0; i < workFlowInput!.TextAnalyticsRequests!.Count; i++)
@@ -79,7 +100,7 @@ public class TextAnalyticsWorkflow()
         var blobContent = JsonSerializer.Serialize(analysisResults, new JsonSerializerOptions { WriteIndented = true });
 
         // first define where to write the file
-        var targetBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
+        var sentimentBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
 
         if (blobContent.Length == 0)
         {
@@ -89,9 +110,20 @@ public class TextAnalyticsWorkflow()
         }
 
         // step 4: write to another blob
-        targetBlobStorageInfo.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
-        targetBlobStorageInfo.InjectTracingContext(span.Context);
-        await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), targetBlobStorageInfo);
+        sentimentBlobStorageInfo.Buffer = System.Text.Encoding.UTF8.GetBytes(blobContent);
+        sentimentBlobStorageInfo.InjectTracingContext(span.Context);
+        await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), sentimentBlobStorageInfo);
+
+        // lets write the embedding to a file as well
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(embeddings, options);
+
+        var embeddingBlobStorageInfo = workFlowInput.TargetBlobStorageInfo!;
+        // override the blob name and the content
+        embeddingBlobStorageInfo.BlobName = $"{workFlowInput.TargetBlobStorageInfo!.BlobName}_embeddings.json";
+        embeddingBlobStorageInfo.Buffer = jsonBytes;
+        embeddingBlobStorageInfo.InjectTracingContext(span.Context);
+        await context.CallActivityAsync<string>(nameof(BlobStorageActivities.WriteBufferToBlob), embeddingBlobStorageInfo);
 
         return orchestrationResults;
     }
