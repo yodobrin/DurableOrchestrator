@@ -19,8 +19,8 @@ public class EmbedTextWorkFlow()
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<WorkflowRequest>() ??
-                    throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
+        var input = context.GetInput<EmbeddingWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(EmbeddingWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -32,14 +32,14 @@ public class EmbedTextWorkFlow()
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(WorkflowRequest.Validate),
+                nameof(EmbeddingWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(EmbeddingWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3:
         // calling OpenAIActivity to embed the text, first need to create the request
@@ -89,7 +89,7 @@ public class EmbedTextWorkFlow()
         var instanceId = await StartWorkflowAsync(
             starter,
             OrchestrationName,
-            ExtractInput<WorkflowRequest>(requestBody),
+            ExtractInput<EmbeddingWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -122,53 +122,5 @@ public class EmbedTextWorkFlow()
             return result;  
         }  
     }  
-    public class WorkflowRequest : IWorkflowRequest
-    {
-        [JsonPropertyName("embeddedDeployment")]
-        public string EmbeddedDeployment { get; set; } = string.Empty;
-        
-        [JsonPropertyName("targetBlobStorageInfo")]
-        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
 
-        [JsonPropertyName("text2embed")]
-        public string Text2Embed { get; set; } = string.Empty;
-
-        [JsonPropertyName("observableProperties")]
-        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
-
-        public ValidationResult Validate()
-        {
-            var result = new ValidationResult();
-            if(string.IsNullOrEmpty(EmbeddedDeployment))
-            {
-                result.AddErrorMessage("Embedded deployment is missing.");
-            }
-            if(string.IsNullOrWhiteSpace(Text2Embed))
-            {
-                result.AddErrorMessage("Text to embed is missing.");
-            }
-            if (TargetBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Target blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
-                {
-                    result.AddMessage("Target blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Target container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Target storage account name is missing.");
-                }
-            }
-            return result;
-        }
-    }
 }
