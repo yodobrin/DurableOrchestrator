@@ -69,54 +69,39 @@ POST http://localhost:7071/api/SplitPdfWorkflow_HttpStart
 
 ### Run the semantic text analytics workflow
 
+### 
 POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
 
 {
-  "targetBlobStorageInfo": {
-    "storageAccountName": "devstoreaccount1",
-    "blobName": "Sentiments.json",
-    "containerName": "targetcontainer"
-  },
-  "textAnalyticsRequests": [
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "I absolutely love the new update! Everything is faster and more intuitive."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "Unfortunately, the product failed to meet my expectations. It's buggy and crashes often."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "The customer service was outstanding; they went above and beyond to solve my issue."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "I'm indifferent about the changes. I liked some improvements, but I think others were unnecessary."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "The installation process was a nightmare. Instructions were not clear, and it took hours to set up."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "This is by far the best version of the product. It's sleek, efficient, and a joy to use."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "The product feels outdated and lacks innovative features compared to competitors."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "I had high hopes, but the app constantly freezes on my phone. Very disappointed."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "The new design is fantastic! It's clean, modern, and easy to navigate."
-    },
-    {
-      "operationTypes": ["sentiment", "keyPhrases"],
-      "textsToAnalyze": "Battery life has significantly worsened since the last update. It's frustrating!"
-    }
-  ]
+"name": "sampleName", 
+"source": "sourceIdentifier", 
+"destination": "destinationIdentifier",
+ "sourceBlobStorageInfo": 
+ { "storageAccountName": "ydinventorylogs", 
+ "blobName": "functions.csv", 
+ "containerName": "sourcecontainer" 
+ }, "targetBlobStorageInfo": 
+ { "storageAccountName": "ydinventorylogs", "blobName": "sentiments3.07.1302.json", "containerName": "target1container" },
+  "textAnalyticsRequests": 
+  [ { "operationTypes": ["sentiment", "keyPhrases"], 
+  "textsToAnalyze": "I absolutely love the new update! Everything is faster and more intuitive." }, 
+  { "operationTypes": ["sentiment", "keyPhrases"], 
+  "textsToAnalyze": "Unfortunately, the product failed to meet my expectations. It's buggy and crashes often." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "The customer service was outstanding; they went above and beyond to solve my issue." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "I'm indifferent about the changes. I liked some improvements, but I think others were unnecessary." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "The installation process was a nightmare. Instructions were not clear, and it took hours to set up." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "This is by far the best version of the product. It's sleek, efficient, and a joy to use." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "The product feels outdated and lacks innovative features compared to competitors." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "I had high hopes, but the app constantly freezes on my phone. Very disappointed." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "The new design is fantastic! It's clean, modern, and easy to navigate." }, { "operationTypes": ["sentiment", "keyPhrases"], "textsToAnalyze": "Battery life has significantly worsened since the last update. It's frustrating!" } ]
+
 }
+
+
+### test embedding workflow
+
+POST http://localhost:7071/api/EmbedTextWorkFlow_HttpStart
+
+{
+  "embeddedDeployment": "emedd-ada-002",
+  "targetBlobStorageInfo": { 
+    "storageAccountName": "ydinventorylogs", 
+    "blobName": "embedding27.3.1409.json", 
+    "containerName": "targetcontainer" 
+  },
+  "text2embed": "Some text to embed"
+}
+ 
