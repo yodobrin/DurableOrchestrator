@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS installer-env
 
-COPY . /src/DurableOrchestrator
+COPY . /src
 RUN cd /src/DurableOrchestrator && \
     mkdir -p /home/site/wwwroot && \
     dotnet publish *.csproj --output /home/site/wwwroot

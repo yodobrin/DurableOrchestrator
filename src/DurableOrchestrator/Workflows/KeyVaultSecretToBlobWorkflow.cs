@@ -1,26 +1,22 @@
+using DurableOrchestrator.AzureKeyVault;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource]
-public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
+public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
 {
-    private const string OrchestrationName = nameof(CopyBlobWorkflow);
+    private const string OrchestrationName = nameof(KeyVaultSecretToBlobWorkflow);
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
 
-    /// <summary>
-    /// Orchestrates the process of copying content from a source blob to a target blob. It involves validating the workflow input, retrieving the content of the source blob, and writing that content to the target blob.
-    /// </summary>
-    /// <param name="context">The orchestration context providing access to workflow-related methods and properties.</param>
-    /// <returns>A list of strings representing the orchestration results, which could include validation errors, informational messages, or a success message indicating the completion of the copy operation.</returns>
     [Function(OrchestrationName)]
     public async Task<List<string>> RunOrchestrator(
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<CopyBlobWorkflowRequest>() ??
-                    throw new ArgumentNullException(nameof(context), $"{nameof(CopyBlobWorkflowRequest)} is null.");
+        var input = context.GetInput<KeyVaultSecretToBlobWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(KeyVaultSecretToBlobWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -32,65 +28,77 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(CopyBlobWorkflowRequest.Validate),
+                nameof(KeyVaultSecretToBlobWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(CopyBlobWorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(KeyVaultSecretToBlobWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
-        // step 3: get blob content to be copied
-        var blobContent = await CallActivityAsync<byte[]?>(
+        // step 3: retrieve the secret from Key Vault
+        var secretName = input.Name;
+
+        var secretValue = await CallActivityAsync<string>(
             context,
-            nameof(BlobStorageActivities.GetBlobContentAsBuffer),
-            input.SourceBlobStorageInfo!,
+            nameof(KeyVaultActivities.GetSecretFromKeyVault),
+            new KeyVaultSecretRequest { SecretName = secretName },
             span.Context);
 
-        if (blobContent == null || blobContent.Length == 0)
+        if (string.IsNullOrEmpty(secretValue))
         {
             orchestrationResults.Add(
-                nameof(BlobStorageActivities.GetBlobContentAsBuffer),
-                $"{nameof(blobContent)} is empty or null.",
+                nameof(KeyVaultActivities.GetSecretFromKeyVault),
+                $"{secretName} value is empty or null.",
                 LogLevel.Error);
-            return orchestrationResults.Results; // Exit the orchestration due to missing blob content
+            return orchestrationResults.Results; // Exit the orchestration due to missing secret value
         }
 
-        // step 4: write to another blob
-        input.TargetBlobStorageInfo!.Buffer = blobContent;
+        orchestrationResults.Add(
+            nameof(KeyVaultActivities.GetSecretFromKeyVault),
+            $"{secretName} value successfully retrieved.");
+
+        // step 4: write the secret value to blob storage
+        input.TargetBlobStorageInfo!.Content = secretValue;
 
         try
         {
-            await CallActivityAsync<string>(
+            await CallActivityAsync(
                 context,
-                nameof(BlobStorageActivities.WriteBufferToBlob),
-                input.TargetBlobStorageInfo,
+                nameof(BlobStorageActivities.WriteStringToBlob),
+                input.TargetBlobStorageInfo!,
                 span.Context);
 
             orchestrationResults.Add(
-                nameof(BlobStorageActivities.WriteBufferToBlob),
-                $"{nameof(blobContent)} file saved to blob storage.");
+                nameof(BlobStorageActivities.WriteStringToBlob),
+                $"{secretName} value saved to blob storage.");
         }
         catch (Exception ex)
         {
             orchestrationResults.Add(
-                nameof(BlobStorageActivities.WriteBufferToBlob),
-                $"{nameof(blobContent)} file failed to save to blob storage. {ex.Message}",
+                nameof(BlobStorageActivities.WriteStringToBlob),
+                $"{secretName} value failed to save to blob storage. {ex.Message}",
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to an error during the write operation
         }
 
+        // step 5: run the split PDF workflow on the saved secret value
+        var splitPdfResult = await CallWorkflowAsync<List<string>>(
+            context,
+            nameof(SplitPdfWorkflow),
+            new SplitPdfWorkflow.SplitPdfWorkflowRequest
+            {
+                SourceBlobStorageInfo = input.SourceBlobStorageInfo,
+                TargetBlobStorageInfo = input.TargetBlobStorageInfo,
+            },
+            span.Context);
+
+        orchestrationResults.AddRange(nameof(SplitPdfWorkflow), $"{nameof(splitPdfResult)} completed.", splitPdfResult);
+
         return orchestrationResults.Results;
     }
 
-    /// <summary>
-    /// HTTP-triggered function that starts the blob copy orchestration. It extracts input from the HTTP request body, schedules a new orchestration instance for the copy operation, and returns a response with the status check URL.
-    /// </summary>
-    /// <param name="req">The HTTP request containing the input for the copy blob workflow.</param>
-    /// <param name="starter">The durable task client used to schedule new orchestration instances.</param>
-    /// <param name="executionContext">The function execution context for logging and other execution-related functionalities.</param>
-    /// <returns>A response with the HTTP status code and the URL to check the orchestration status.</returns>
     [Function(OrchestrationTriggerName)]
     public async Task<HttpResponseData> HttpStart(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")]
@@ -111,7 +119,7 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            ExtractInput<CopyBlobWorkflowRequest>(requestBody),
+            ExtractInput<KeyVaultSecretToBlobWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -119,8 +127,10 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    internal class CopyBlobWorkflowRequest : BaseWorkflowRequest
+    internal class KeyVaultSecretToBlobWorkflowRequest : BaseWorkflowRequest
     {
+        [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
+
         [JsonPropertyName("sourceBlobStorageInfo")]
         public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
 
@@ -130,6 +140,11 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
         public override ValidationResult Validate()
         {
             var result = new ValidationResult();
+
+            if (string.IsNullOrEmpty(Name))
+            {
+                result.AddMessage("Secret name is missing.");
+            }
 
             result.Merge(SourceBlobStorageInfo?.Validate(checkContent: false), "Source blob storage info is missing.");
             result.Merge(TargetBlobStorageInfo?.Validate(checkContent: false), "Target blob storage info is missing.");

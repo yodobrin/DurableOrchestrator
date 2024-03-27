@@ -128,18 +128,6 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
         value: openAIRef.properties.endpoint
       }
       {
-        name: 'OPENAI_MODEL_DEPLOYMENT_NAME'
-        value: gptModelDeploymentName
-      }
-      {
-        name: 'BlobSourceStorageAccountName'
-        value: storageAccountRef.name
-      }
-      {
-        name: 'BlobTargetStorageAccountName'
-        value: storageAccountRef.name
-      }
-      {
         name: 'WEBSITE_HOSTNAME'
         value: 'localhost'
       }
