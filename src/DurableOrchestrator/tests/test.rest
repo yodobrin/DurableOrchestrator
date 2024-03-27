@@ -69,7 +69,6 @@ POST http://localhost:7071/api/SplitPdfWorkflow_HttpStart
 
 ### Run the semantic text analytics workflow
 
-### 
 POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
 
 {
@@ -90,18 +89,18 @@ POST http://localhost:7071/api/TextAnalyticsWorkflow_HttpStart
 
 }
 
-
-### test embedding workflow
+### Run the text embedding workflow
 
 POST http://localhost:7071/api/EmbedTextWorkFlow_HttpStart
 
 {
-  "embeddedDeployment": "emedd-ada-002",
+  "embeddingInfo": {
+    "modelDeploymentName": "emedd-ada-002",
+    "textToEmbed": "Some text to embed"
+  },
   "targetBlobStorageInfo": { 
-    "storageAccountName": "ydinventorylogs", 
+    "storageAccountName": "devstoreaccount1", 
     "blobName": "embedding27.3.1409.json", 
     "containerName": "targetcontainer" 
-  },
-  "text2embed": "Some text to embed"
+  }
 }
- 

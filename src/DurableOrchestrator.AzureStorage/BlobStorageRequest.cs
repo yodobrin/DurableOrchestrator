@@ -63,12 +63,23 @@ public class BlobStorageRequest : IWorkflowRequest
     {
         var result = new ValidationResult();
 
-        if (!checkContent)
+        if (string.IsNullOrWhiteSpace(StorageAccountName))
         {
-            return result;
+            result.AddErrorMessage($"{nameof(StorageAccountName)} is missing.");
         }
 
-        if (string.IsNullOrWhiteSpace(Content))
+        if (string.IsNullOrWhiteSpace(ContainerName))
+        {
+            result.AddErrorMessage($"{nameof(ContainerName)} is missing.");
+        }
+
+        if (string.IsNullOrWhiteSpace(BlobName))
+        {
+            // could be missing - not breaking the validity of the request
+            result.AddMessage($"{nameof(BlobName)} is missing.");
+        }
+
+        if (checkContent && string.IsNullOrWhiteSpace(Content))
         {
             result.AddErrorMessage($"{nameof(Content)} is missing.");
         }

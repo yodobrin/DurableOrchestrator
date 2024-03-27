@@ -1,6 +1,5 @@
 using DurableOrchestrator.AzureKeyVault;
 using DurableOrchestrator.AzureStorage;
-using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
@@ -16,8 +15,8 @@ public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<WorkflowRequest>() ??
-                    throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
+        var input = context.GetInput<KeyVaultSecretToBlobWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(KeyVaultSecretToBlobWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -29,14 +28,14 @@ public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(WorkflowRequest.Validate),
+                nameof(KeyVaultSecretToBlobWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(KeyVaultSecretToBlobWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3: retrieve the secret from Key Vault
         var secretName = input.Name;
@@ -88,7 +87,7 @@ public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
         var splitPdfResult = await CallWorkflowAsync<List<string>>(
             context,
             nameof(SplitPdfWorkflow),
-            new SplitPdfWorkflow.WorkflowRequest
+            new SplitPdfWorkflow.SplitPdfWorkflowRequest
             {
                 SourceBlobStorageInfo = input.SourceBlobStorageInfo,
                 TargetBlobStorageInfo = input.TargetBlobStorageInfo,
@@ -120,7 +119,7 @@ public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            ExtractInput<WorkflowRequest>(requestBody),
+            ExtractInput<KeyVaultSecretToBlobWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -128,44 +127,27 @@ public class KeyVaultSecretToBlobWorkflow() : BaseWorkflow(OrchestrationName)
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : BaseWorkflowRequest
+    internal class KeyVaultSecretToBlobWorkflowRequest : BaseWorkflowRequest
     {
         [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
 
         [JsonPropertyName("sourceBlobStorageInfo")]
         public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
 
+        [JsonPropertyName("targetBlobStorageInfo")]
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
+
         public override ValidationResult Validate()
         {
-            var result = base.Validate();
+            var result = new ValidationResult();
 
             if (string.IsNullOrEmpty(Name))
             {
                 result.AddMessage("Secret name is missing.");
             }
 
-            if (SourceBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Source blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.BlobName))
-                {
-                    // could be missing - not breaking the validity of the request
-                    result.AddMessage("Source blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Source container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Source storage account name is missing.");
-                }
-            }
+            result.Merge(SourceBlobStorageInfo?.Validate(checkContent: false), "Source blob storage info is missing.");
+            result.Merge(TargetBlobStorageInfo?.Validate(checkContent: false), "Target blob storage info is missing.");
 
             return result;
         }

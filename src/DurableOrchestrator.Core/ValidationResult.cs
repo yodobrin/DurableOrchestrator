@@ -41,6 +41,27 @@ public class ValidationResult
     }
 
     /// <summary>
+    /// Merges the validation result with another validation result.
+    /// </summary>
+    /// <remarks>
+    /// The <see cref="IsValid"/> property is updated to <see langword="false"/> if the other validation result is invalid.
+    /// </remarks>
+    /// <param name="other">The other validation result to merge.</param>
+    /// <param name="errorMessage">The error message to add if the other validation result is null.</param>
+    public void Merge(ValidationResult? other, string? errorMessage = default)
+    {
+        if (other == null)
+        {
+            AddErrorMessage(errorMessage ?? "The validation result to merge is invalid.");
+            return;
+        }
+
+        IsValid &= other.IsValid;
+
+        _validationMessages.AddRange(other.ValidationMessages);
+    }
+
+    /// <summary>
     /// Returns a string combining the validation messages.
     /// </summary>
     /// <returns>The combined validation messages.</returns>

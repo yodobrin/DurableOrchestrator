@@ -1,6 +1,5 @@
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.AzureTextAnalytics;
-using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
@@ -21,8 +20,8 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(OrchestrationName)
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<WorkflowRequest>() ??
-                    throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
+        var input = context.GetInput<TextAnalyticsWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(TextAnalyticsWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -34,14 +33,14 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(OrchestrationName)
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(WorkflowRequest.Validate),
+                nameof(TextAnalyticsWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(TextAnalyticsWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3:
         // call the sentiment analysis activity for each text analytics request - fan-out/fan-in
@@ -142,7 +141,7 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(OrchestrationName)
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            ExtractInput<WorkflowRequest>(requestBody),
+            ExtractInput<TextAnalyticsWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -150,14 +149,19 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(OrchestrationName)
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : BaseWorkflowRequest
+    internal class TextAnalyticsWorkflowRequest : BaseWorkflowRequest
     {
+        [JsonPropertyName("targetBlobStorageInfo")]
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
+
         [JsonPropertyName("textAnalyticsRequests")]
         public List<TextAnalyticsRequest>? TextAnalyticsRequests { get; set; } = new();
 
         public override ValidationResult Validate()
         {
-            var result = base.Validate();
+            var result = new ValidationResult();
+
+            result.Merge(TargetBlobStorageInfo?.Validate(checkContent: false), "Target blob storage info is missing.");
 
             if (TextAnalyticsRequests == null || TextAnalyticsRequests.Count == 0)
             {
@@ -165,18 +169,10 @@ public class TextAnalyticsWorkflow() : BaseWorkflow(OrchestrationName)
             }
             else
             {
-                // only if the individual list is empty -> request is not valid
+                // Only if the individual list is empty -> request is not valid
                 foreach (var request in TextAnalyticsRequests)
                 {
-                    if (string.IsNullOrEmpty(request.TextsToAnalyze))
-                    {
-                        result.AddErrorMessage("Texts to analyze are missing for a text analytics request.");
-                    }
-
-                    if (request.OperationTypes == null || request.OperationTypes.Count == 0)
-                    {
-                        result.AddErrorMessage("Operation types are missing for a text analytics request.");
-                    }
+                    result.Merge(request.Validate());
                 }
             }
 

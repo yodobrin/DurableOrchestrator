@@ -1,5 +1,4 @@
 using DurableOrchestrator.AzureStorage;
-using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
@@ -20,8 +19,8 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<WorkflowRequest>() ??
-                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
+        var input = context.GetInput<CopyBlobWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(CopyBlobWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -33,14 +32,14 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(WorkflowRequest.Validate),
+                nameof(CopyBlobWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(CopyBlobWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3: get blob content to be copied
         var blobContent = await CallActivityAsync<byte[]?>(
@@ -112,7 +111,7 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            ExtractInput<WorkflowRequest>(requestBody),
+            ExtractInput<CopyBlobWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -120,37 +119,20 @@ public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : BaseWorkflowRequest
+    internal class CopyBlobWorkflowRequest : BaseWorkflowRequest
     {
         [JsonPropertyName("sourceBlobStorageInfo")]
         public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
 
+        [JsonPropertyName("targetBlobStorageInfo")]
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
+
         public override ValidationResult Validate()
         {
-            var result = base.Validate();
+            var result = new ValidationResult();
 
-            if (SourceBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Source blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.BlobName))
-                {
-                    // could be missing - not breaking the validity of the request
-                    result.AddMessage("Source blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Source container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Source storage account name is missing.");
-                }
-            }
+            result.Merge(SourceBlobStorageInfo?.Validate(checkContent: false), "Source blob storage info is missing.");
+            result.Merge(TargetBlobStorageInfo?.Validate(checkContent: false), "Target blob storage info is missing.");
 
             return result;
         }

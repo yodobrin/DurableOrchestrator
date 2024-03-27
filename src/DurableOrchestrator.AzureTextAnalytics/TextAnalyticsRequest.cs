@@ -34,6 +34,11 @@ public class TextAnalyticsRequest : IWorkflowRequest
             result.AddErrorMessage($"{nameof(TextsToAnalyze)} is missing.");
         }
 
+        if (OperationTypes == null || OperationTypes.Count == 0)
+        {
+            result.AddErrorMessage($"{nameof(OperationTypes)} are missing.");
+        }
+
         return result;
     }
 }

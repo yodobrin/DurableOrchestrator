@@ -1,6 +1,5 @@
 using DurableOrchestrator.AzureOpenAI;
 using DurableOrchestrator.AzureStorage;
-using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
@@ -16,8 +15,8 @@ public class EmbedTextWorkFlow() : BaseWorkflow(OrchestrationName)
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<WorkflowRequest>() ??
-                    throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
+        var input = context.GetInput<EmbedTextWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(EmbedTextWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -29,40 +28,31 @@ public class EmbedTextWorkFlow() : BaseWorkflow(OrchestrationName)
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(WorkflowRequest.Validate),
+                nameof(EmbedTextWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(EmbedTextWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3:
         // calling OpenAIActivity to embed the text, first need to create the request
-
-        var openAIRequest = new OpenAIRequest
-        {
-            EmbeddedDeployment = input.EmbeddedDeployment,
-            OpenAIOperation = OpenAIOperation.Embedding,
-            Text2Embed = input.Text2Embed
-        };
-
-        var embeddings = await CallActivityAsync<float[]>(
+        var embeddings = await CallActivityAsync<float[]?>(
             context,
-            nameof(OpenAIActivities.EmbeddText),
-            openAIRequest,
+            nameof(OpenAIActivities.EmbedText),
+            input.EmbeddingInfo!,
             span.Context);
 
-        // lets write the embedding to a file as well
+        // then, write the embedding as JSON to a file
         var options = new JsonSerializerOptions { WriteIndented = true };
         var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(embeddings, options);
 
         var embeddingBlobStorageInfo = input.TargetBlobStorageInfo!;
-        // override the blob name and the content
         embeddingBlobStorageInfo.BlobName = $"{input.TargetBlobStorageInfo!.BlobName}_embeddings.json";
         embeddingBlobStorageInfo.Buffer = jsonBytes;
-        // embeddingBlobStorageInfo.InjectTracingContext(span.Context);
+
         await CallActivityAsync<string>(
             context,
             nameof(BlobStorageActivities.WriteBufferToBlob),
@@ -92,7 +82,7 @@ public class EmbedTextWorkFlow() : BaseWorkflow(OrchestrationName)
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            ExtractInput<WorkflowRequest>(requestBody),
+            ExtractInput<EmbedTextWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -100,26 +90,20 @@ public class EmbedTextWorkFlow() : BaseWorkflow(OrchestrationName)
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : BaseWorkflowRequest
+    internal class EmbedTextWorkflowRequest : BaseWorkflowRequest
     {
-        [JsonPropertyName("embeddedDeployment")]
-        public string EmbeddedDeployment { get; set; } = string.Empty;
+        [JsonPropertyName("targetBlobStorageInfo")]
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
 
-        [JsonPropertyName("text2embed")] public string Text2Embed { get; set; } = string.Empty;
+        [JsonPropertyName("embeddingInfo")]
+        public OpenAIEmbeddingRequest? EmbeddingInfo { get; set; }
 
         public override ValidationResult Validate()
         {
-            var result = base.Validate();
+            var result = new ValidationResult();
 
-            if (string.IsNullOrEmpty(EmbeddedDeployment))
-            {
-                result.AddErrorMessage("Embedded deployment is missing.");
-            }
-
-            if (string.IsNullOrWhiteSpace(Text2Embed))
-            {
-                result.AddErrorMessage("Text to embed is missing.");
-            }
+            result.Merge(TargetBlobStorageInfo?.Validate(checkContent: false), "Target blob storage info is missing.");
+            result.Merge(EmbeddingInfo?.Validate(), "Embedding info is missing.");
 
             return result;
         }
