@@ -1,27 +1,22 @@
+using DurableOrchestrator.AzureDocumentIntelligence;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core.Observability;
-using iText.Kernel.Pdf;
 
 namespace DurableOrchestrator.Workflows;
 
 [ActivitySource]
-public class SplitPdfWorkflow() : BaseWorkflow(OrchestrationName)
+public class DocumentIntelligenceToMarkdownWorkflow() : BaseWorkflow(OrchestrationName)
 {
-    private const string OrchestrationName = nameof(SplitPdfWorkflow);
+    private const string OrchestrationName = nameof(DocumentIntelligenceToMarkdownWorkflow);
     private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
 
-    /// <summary>
-    /// Orchestrates the split of a pdf file into individual pages and saves the split pages to blob storage.
-    /// </summary>
-    /// <param name="context">The orchestration context providing access to workflow-related methods and properties.</param>
-    /// <returns>A list of strings representing the orchestration results, which could include validation errors, informational messages, or the success message indicating the completion of sentiment analysis and data persistence.</returns>
     [Function(OrchestrationName)]
     public async Task<List<string>> RunOrchestrator(
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<SplitPdfWorkflowRequest>() ??
-                    throw new ArgumentNullException(nameof(context), $"{nameof(SplitPdfWorkflowRequest)} is null.");
+        var input = context.GetInput<DocumentIntelligenceToMarkdownWorkflowRequest>() ??
+                    throw new ArgumentNullException(nameof(context), $"{nameof(DocumentIntelligenceToMarkdownWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -33,18 +28,16 @@ public class SplitPdfWorkflow() : BaseWorkflow(OrchestrationName)
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(SplitPdfWorkflowRequest.Validate),
+                nameof(DocumentIntelligenceToMarkdownWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(SplitPdfWorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(DocumentIntelligenceToMarkdownWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
-        // step 3: read the source file from blob storage using the input and split the PDF file into individual pages
-        var splitResults = new List<byte[]>();
-
+        // step 3: read source file into buffer, assuming the file to read exists in the SourceBlobStorageInfo
         var sourceFile = await CallActivityAsync<byte[]?>(
             context,
             nameof(BlobStorageActivities.GetBlobContentAsBuffer),
@@ -57,72 +50,59 @@ public class SplitPdfWorkflow() : BaseWorkflow(OrchestrationName)
                 nameof(BlobStorageActivities.GetBlobContentAsBuffer),
                 $"{nameof(sourceFile)} is null or empty.",
                 LogLevel.Error);
-            return orchestrationResults.Results; // Exit the orchestration due to missing blob content
+            return orchestrationResults.Results; // Exit the orchestration due to missing source file
         }
+
+        orchestrationResults.Add(
+            nameof(BlobStorageActivities.GetBlobContentAsBuffer),
+            $"{nameof(sourceFile)} read into buffer.");
+
+        // step 4: call DI layout to markdown activity
+        var request = new DocumentIntelligenceRequest
+        {
+            Content = sourceFile,
+            ValueBy = DocumentIntelligenceRequestContentType.InMemory,
+            ModelId = "prebuilt-layout"
+        };
+
+        var markdown = await CallActivityAsync<byte[]?>(
+            context,
+            nameof(DocumentIntelligenceActivities.AnalyzeDocumentToMarkdown),
+            request,
+            span.Context);
+
+        if (markdown == null)
+        {
+            orchestrationResults.Add(
+                nameof(DocumentIntelligenceActivities.AnalyzeDocumentToMarkdown),
+                $"{nameof(sourceFile)} failed to convert to markdown.",
+                LogLevel.Error);
+            return orchestrationResults.Results; // Exit the orchestration due to failed conversion
+        }
+
+        // step 5: save the markdown file to blob storage
+        input.TargetBlobStorageInfo!.Buffer = markdown;
 
         try
         {
-            using var pdfReader = new PdfReader(new MemoryStream(sourceFile));
-            using var pdfDocument = new PdfDocument(pdfReader);
-
-            var numberOfPages = pdfDocument.GetNumberOfPages();
-
-            for (var i = 1; i <= numberOfPages; i++)
-            {
-                using var writeMemoryStream = new MemoryStream();
-                await using var pdfWriter = new PdfWriter(writeMemoryStream);
-                using var pdfDest = new PdfDocument(pdfWriter);
-
-                pdfDocument.CopyPagesTo(i, i, pdfDest);
-                pdfDest.Close(); // Ensure closure to flush content to stream
-
-                splitResults.Add(writeMemoryStream.ToArray());
-            }
+            await CallActivityAsync(
+                context,
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                input.TargetBlobStorageInfo,
+                span.Context);
 
             orchestrationResults.Add(
-                nameof(PdfDocument.CopyPagesTo),
-                $"{nameof(sourceFile)} was split into {numberOfPages} pages.");
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                $"{nameof(markdown)} file saved to blob storage.");
         }
         catch (Exception ex)
         {
             orchestrationResults.Add(
-                nameof(PdfDocument.CopyPagesTo),
-                $"{nameof(sourceFile)} PDF processing failed. {ex.Message}",
+                nameof(BlobStorageActivities.WriteBufferToBlob),
+                $"{nameof(markdown)} file failed to save to blob storage. {ex.Message}",
                 LogLevel.Error);
-            return orchestrationResults.Results;
+            return orchestrationResults.Results; // Exit the orchestration due to failed saving
         }
-
-        // step 4: write the split PDF files to blob storage
-        var writeTasks = new List<Task>();
-
-        for (var i = 0; i < splitResults.Count; i++)
-        {
-            var blobStorageRequest = new BlobStorageRequest
-            {
-                StorageAccountName = input.TargetBlobStorageInfo!.StorageAccountName,
-                ContainerName = input.TargetBlobStorageInfo!.ContainerName,
-                BlobName = $"{input.TargetBlobStorageInfo!.BlobName}_{i + 1}.pdf",
-                Buffer = splitResults[i]
-            };
-
-            var writeTask = CallActivityAsync(
-                context,
-                nameof(BlobStorageActivities.WriteBufferToBlob),
-                blobStorageRequest,
-                span.Context);
-            writeTasks.Add(writeTask);
-
-            orchestrationResults.Add(
-                nameof(BlobStorageActivities.WriteBufferToBlob),
-                $"{blobStorageRequest.BlobName} added to write tasks.");
-        }
-
-        // Fan-out: start all write operations concurrently and wait for all of them to complete
-        await Task.WhenAll(writeTasks);
-
-        orchestrationResults.Add(
-            nameof(BlobStorageActivities.WriteBufferToBlob),
-            $"{nameof(splitResults)} saved to blob storage.");
 
         return orchestrationResults.Results;
     }
@@ -154,7 +134,7 @@ public class SplitPdfWorkflow() : BaseWorkflow(OrchestrationName)
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            ExtractInput<SplitPdfWorkflowRequest>(requestBody),
+            ExtractInput<DocumentIntelligenceToMarkdownWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -162,7 +142,7 @@ public class SplitPdfWorkflow() : BaseWorkflow(OrchestrationName)
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    internal class SplitPdfWorkflowRequest : BaseWorkflowRequest
+    internal class DocumentIntelligenceToMarkdownWorkflowRequest : BaseWorkflowRequest
     {
         [JsonPropertyName("sourceBlobStorageInfo")]
         public BlobStorageRequest? SourceBlobStorageInfo { get; set; }

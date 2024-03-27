@@ -46,7 +46,7 @@ Write-Host "Building ${ContainerImageName} image..."
 
 az acr login --name $ContainerRegistryName
 
-docker build -t $ContainerImageName -f ../../../src/DurableOrchestrator/Dockerfile ../../../src/DurableOrchestrator/.
+docker build -t $ContainerImageName -f ../../../src/DurableOrchestrator/Dockerfile ../../../src/.
 
 Write-Host "Pushing ${ContainerImageName} image..."
 

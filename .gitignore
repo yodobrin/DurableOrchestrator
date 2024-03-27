@@ -265,3 +265,4 @@ __pycache__/
 
 # App Specific
 *Outputs.json
+src/DurableOrchestrator/notebooks/basic.ipynb
