@@ -40,6 +40,17 @@ public class ValidationResult
         AddMessage(message);
     }
 
+    public void Merge(ValidationResult other)
+    {
+        if (other == null)
+        {
+            return;
+        }
+
+       IsValid &= other.IsValid;
+
+        _validationMessages.AddRange(other.ValidationMessages);
+    }
     /// <summary>
     /// Returns a string combining the validation messages.
     /// </summary>

@@ -21,8 +21,8 @@ public class CopyBlobWorkflow()
         [OrchestrationTrigger] TaskOrchestrationContext context)
     {
         // step 1: obtain input for the workflow
-        var input = context.GetInput<WorkflowRequest>() ??
-                            throw new ArgumentNullException(nameof(context), $"{nameof(WorkflowRequest)} is null.");
+        var input = context.GetInput<CopyBlobWorkflowRequest>() ??
+                            throw new ArgumentNullException(nameof(context), $"{nameof(CopyBlobWorkflowRequest)} is null.");
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
@@ -34,14 +34,14 @@ public class CopyBlobWorkflow()
         if (!validationResult.IsValid)
         {
             orchestrationResults.AddRange(
-                nameof(WorkflowRequest.Validate),
+                nameof(CopyBlobWorkflowRequest.Validate),
                 $"{nameof(input)} is invalid.",
                 validationResult.ValidationMessages,
                 LogLevel.Error);
             return orchestrationResults.Results; // Exit the orchestration due to validation errors
         }
 
-        orchestrationResults.Add(nameof(WorkflowRequest.Validate), $"{nameof(input)} is valid.");
+        orchestrationResults.Add(nameof(CopyBlobWorkflowRequest.Validate), $"{nameof(input)} is valid.");
 
         // step 3: get blob content to be copied
         var blobContent = await CallActivityAsync<byte[]?>(
@@ -114,7 +114,7 @@ public class CopyBlobWorkflow()
         var instanceId = await StartWorkflowAsync(
             starter,
             OrchestrationName,
-            ExtractInput<WorkflowRequest>(requestBody),
+            ExtractInput<CopyBlobWorkflowRequest>(requestBody),
             span.Context);
 
         log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
@@ -122,7 +122,7 @@ public class CopyBlobWorkflow()
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
 
-    public class WorkflowRequest : IWorkflowRequest
+    public class CopyBlobWorkflowRequest : WorkflowRequestBase
     {
         [JsonPropertyName("sourceBlobStorageInfo")]
         public BlobStorageRequest? SourceBlobStorageInfo { get; set; }
@@ -130,59 +130,11 @@ public class CopyBlobWorkflow()
         [JsonPropertyName("targetBlobStorageInfo")]
         public BlobStorageRequest? TargetBlobStorageInfo { get; set; }
 
-        [JsonPropertyName("observableProperties")]
-        public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
-
-        public ValidationResult Validate()
+        public override ValidationResult Validate()
         {
             var result = new ValidationResult();
-
-            if (SourceBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Source blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.BlobName))
-                {
-                    // could be missing - not breaking the validity of the request
-                    result.AddMessage("Source blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Source container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(SourceBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Source storage account name is missing.");
-                }
-            }
-
-            if (TargetBlobStorageInfo == null)
-            {
-                result.AddErrorMessage("Target blob storage info is missing.");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.BlobName))
-                {
-                    // could be missing - not breaking the validity of the request
-                    result.AddMessage("Target blob name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.ContainerName))
-                {
-                    result.AddErrorMessage("Target container name is missing.");
-                }
-
-                if (string.IsNullOrEmpty(TargetBlobStorageInfo.StorageAccountName))
-                {
-                    result.AddErrorMessage("Target storage account name is missing.");
-                }
-            }
-
+            result.Merge(ValidateBlobStorageInfo(TargetBlobStorageInfo, "Target"));
+            result.Merge(ValidateBlobStorageInfo(SourceBlobStorageInfo, "Source"));
             return result;
         }
     }

@@ -1,7 +1,7 @@
 using DurableOrchestrator.AzureOpenAI;
 using DurableOrchestrator.AzureStorage;
-using DurableOrchestrator.AzureTextAnalytics;
-using DurableOrchestrator.Core;
+// using DurableOrchestrator.AzureTextAnalytics;
+// using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 
 namespace DurableOrchestrator.Workflows;
@@ -96,7 +96,32 @@ public class EmbedTextWorkFlow()
 
         return await starter.CreateCheckStatusResponseAsync(req, instanceId);
     }
-
+    public class EmbeddingWorkflowRequest : WorkflowRequestBase  
+    {  
+        [JsonPropertyName("embeddedDeployment")]  
+        public string EmbeddedDeployment { get; set; } = string.Empty;  
+    
+        [JsonPropertyName("targetBlobStorageInfo")]  
+        public BlobStorageRequest? TargetBlobStorageInfo { get; set; }  
+    
+        [JsonPropertyName("text2embed")]  
+        public string Text2Embed { get; set; } = string.Empty;  
+    
+        public override ValidationResult Validate()  
+        {  
+            var result = new ValidationResult();  
+            if (string.IsNullOrEmpty(EmbeddedDeployment))  
+            {  
+                result.AddErrorMessage("Embedded deployment is missing.");  
+            }  
+            if (string.IsNullOrWhiteSpace(Text2Embed))  
+            {  
+                result.AddErrorMessage("Text to embed is missing.");  
+            }  
+            result.Merge(ValidateBlobStorageInfo(TargetBlobStorageInfo, "Target"));  
+            return result;  
+        }  
+    }  
     public class WorkflowRequest : IWorkflowRequest
     {
         [JsonPropertyName("embeddedDeployment")]
