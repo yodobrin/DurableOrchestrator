@@ -44,7 +44,7 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
         var invoiceUri = await CallActivityAsync<string?>(
             context,
             nameof(BlobStorageActivities.GetBlobSasUri),
-            input.Invoice!,
+            input.InvoiceSourceInfo!,
             span.Context);
 
         if (string.IsNullOrEmpty(invoiceUri))
@@ -89,7 +89,8 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
                 MaxTokens = 4096,
                 Temperature = 0.1f,
                 TopP = 0.1f,
-                SystemPrompt = "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.",
+                SystemPrompt =
+                    "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.",
                 Messages =
                 [
                     $"Extract the data from this invoice. If a value is not present, provide null. Use the following structure: {JsonSerializer.Serialize(invoiceDataStructure)}",
@@ -108,10 +109,22 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
         }
 
         var invoiceData = JsonSerializer.Deserialize<Invoice>(invoiceJsonData);
+        var invoiceEntity = InvoiceEntity.FromInvoice(
+            input.TenantId,
+            input.InvoiceSourceInfo!.BlobName,
+            invoiceData!);
 
-        // step 6: store the invoice data in table storage
+        // step 6: store the invoice data in blob storage
+        input.InvoiceTargetInfo!.Buffer = JsonSerializer.SerializeToUtf8Bytes(invoiceEntity);
 
-        // ToDo: Implement the storage of the invoice data in table storage
+        await CallActivityAsync(
+            context,
+            nameof(BlobStorageActivities.WriteBufferToBlob),
+            input.InvoiceTargetInfo!,
+            span.Context);
+
+        orchestrationResults.Add(nameof(BlobStorageActivities.WriteBufferToBlob),
+            $"Invoice data for {invoiceEntity.InvoiceName} stored successfully in tenant {invoiceEntity.TenantId}.");
 
         return orchestrationResults.Results;
     }
@@ -119,7 +132,7 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
     [Function(OrchestrationTriggerName)]
     public async Task QueueStart(
         [QueueTrigger("invoices", Connection = "AzureWebJobsStorage")]
-        BlobStorageRequest? invoice,
+        InvoiceDataExtractionWorkflowRequest? invoice,
         [DurableClient] DurableTaskClient starter,
         FunctionContext executionContext)
     {
@@ -133,21 +146,44 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
 
         var instanceId = await StartWorkflowAsync(
             starter,
-            new InvoiceDataExtractionWorkflowRequest { Invoice = invoice },
+            invoice,
             span.Context);
 
         log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
     }
 
-    internal class InvoiceDataExtractionWorkflowRequest : BaseWorkflowRequest
+    public class InvoiceDataExtractionWorkflowRequest : BaseWorkflowRequest
     {
-        [JsonPropertyName("invoice")] public BlobStorageRequest? Invoice { get; set; }
+        /// <summary>
+        /// Gets or sets the ID of the tenant associated with the invoice.
+        /// </summary>
+        [JsonPropertyName("tenantId")]
+        public Guid TenantId { get; set; } = Guid.Empty;
 
+        /// <summary>
+        /// Gets or sets the details of the invoice to retrieve from the blob storage.
+        /// </summary>
+        [JsonPropertyName("invoiceSourceInfo")]
+        public BlobStorageRequest? InvoiceSourceInfo { get; set; }
+
+        /// <summary>
+        /// Gets or sets the details of the blob storage to store the invoice data.
+        /// </summary>
+        [JsonPropertyName("invoiceTargetInfo")]
+        public BlobStorageRequest? InvoiceTargetInfo { get; set; }
+
+        /// <inheritdoc />
         public override ValidationResult Validate()
         {
             var result = new ValidationResult();
 
-            result.Merge(Invoice?.Validate(false), "Invoice info is missing.");
+            if (TenantId == Guid.Empty)
+            {
+                result.AddErrorMessage($"{nameof(TenantId)} is missing.");
+            }
+
+            result.Merge(InvoiceSourceInfo?.Validate(false), "Invoice source info is missing.");
+            result.Merge(InvoiceTargetInfo?.Validate(false), "Invoice target info is missing.");
 
             return result;
         }
