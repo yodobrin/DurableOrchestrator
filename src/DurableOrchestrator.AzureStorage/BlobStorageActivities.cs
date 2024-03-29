@@ -1,23 +1,85 @@
 using System.Text;
+using Azure.Storage.Blobs;
+using Azure.Storage.Sas;
 using DurableOrchestrator.Core;
 using DurableOrchestrator.Core.Observability;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Trace;
+using BlobSasBuilder = Azure.Storage.Sas.BlobSasBuilder;
 
 namespace DurableOrchestrator.AzureStorage;
 
 /// <summary>
 /// Defines a collection of activities for interacting with Azure Blob Storage.
 /// </summary>
-/// <param name="blobServiceClientFactory">The <see cref="BlobServiceClientFactory"/> instance used to interact with Azure Storage accounts.</param>
+/// <param name="storageClientFactory">The <see cref="StorageClientFactory"/> instance used to interact with Azure Storage accounts.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
 [ActivitySource]
 public class BlobStorageActivities(
-    BlobServiceClientFactory blobServiceClientFactory,
+    StorageClientFactory storageClientFactory,
     ILogger<BlobStorageActivities> logger)
     : BaseActivity(nameof(BlobStorageActivities))
 {
+    [Function(nameof(GetBlobSasUri))]
+    public async Task<string?> GetBlobSasUri(
+        [ActivityTrigger] BlobStorageRequest input,
+        FunctionContext executionContext)
+    {
+        using var span = StartActiveSpan(nameof(GetBlobSasUri), input);
+
+        var validationResult = input.Validate(checkContent: false);
+        if (!validationResult.IsValid)
+        {
+            throw new ArgumentException(
+                $"{nameof(GetBlobSasUri)}::{nameof(input)} is invalid. {validationResult}");
+        }
+
+        try
+        {
+            var blobServiceClient = storageClientFactory
+                .GetBlobServiceClient(input.StorageAccountName);
+
+            var blobClient = blobServiceClient
+                .GetBlobContainerClient(input.ContainerName)
+                .GetBlobClient(input.BlobName);
+
+            if (!blobClient.CanGenerateSasUri)
+            {
+                // The blob client is constructed with managed identity and cannot generate SAS tokens, so we need to create one manually.
+                var userDelegationKey = await blobServiceClient.GetUserDelegationKeyAsync(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1));
+                var sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = input.ContainerName,
+                    BlobName = input.BlobName,
+                    Resource = "b",
+                    StartsOn = DateTimeOffset.UtcNow,
+                    ExpiresOn = DateTimeOffset.UtcNow.AddHours(1)
+                };
+                sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+                var blobUriBuilder = new BlobUriBuilder(blobClient.Uri)
+                {
+                    Sas = sasBuilder.ToSasQueryParameters(userDelegationKey, blobServiceClient.AccountName)
+                };
+
+                return blobUriBuilder.ToUri().ToString();
+            }
+
+            var sasUri = blobClient.GenerateSasUri(BlobSasPermissions.Read, DateTimeOffset.UtcNow.AddHours(1));
+            return sasUri.ToString();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("{Activity} failed. {Error}", nameof(GetBlobSasUri), ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
+            throw;
+        }
+    }
+
     /// <summary>
     /// Retrieves the content of a blob as a string from Azure Storage.
     /// </summary>
@@ -42,7 +104,7 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobClient = blobServiceClientFactory
+            var blobClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName)
                 .GetBlobClient(input.BlobName);
@@ -90,7 +152,7 @@ public class BlobStorageActivities(
                 input.BlobName,
                 input.ContainerName);
 
-            var blobClient = blobServiceClientFactory
+            var blobClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName)
                 .GetBlobClient(input.BlobName);
@@ -133,7 +195,7 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobContainerClient = blobServiceClientFactory
+            var blobContainerClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName);
 
@@ -184,7 +246,7 @@ public class BlobStorageActivities(
                 input.BlobName,
                 input.ContainerName);
 
-            var blobContainerClient = blobServiceClientFactory
+            var blobContainerClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName);
 

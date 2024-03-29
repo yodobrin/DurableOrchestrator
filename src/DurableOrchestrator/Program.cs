@@ -53,6 +53,8 @@ var host = new HostBuilder()
         services.AddKeyVault(builder.Configuration);
         // Required for most activities, reads and write to blob storage
         services.AddBlobStorage(builder.Configuration);
+        // Required for activities storing data in table storage
+        services.AddTableStorage(builder.Configuration);
         // Required if Text Analytics is used
         services.AddTextAnalytics(builder.Configuration);
         // Required if Document Intelligence is used
