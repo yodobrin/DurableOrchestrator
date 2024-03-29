@@ -6,14 +6,8 @@ namespace DurableOrchestrator.AzureStorage;
 /// <summary>
 /// Defines a model that represents information about a blob in Azure Storage.
 /// </summary>
-public class BlobStorageRequest : IWorkflowRequest
+public class BlobStorageRequest : StorageAccountRequest
 {
-    /// <summary>
-    /// Gets or sets the name of the storage account.
-    /// </summary>
-    [JsonPropertyName("storageAccountName")]
-    public string StorageAccountName { get; set; } = string.Empty;
-
     /// <summary>
     /// Gets or sets the name of the blob.
     /// </summary>
@@ -45,11 +39,7 @@ public class BlobStorageRequest : IWorkflowRequest
     public byte[] Buffer { get; set; } = Array.Empty<byte>();
 
     /// <inheritdoc />
-    [JsonPropertyName("observableProperties")]
-    public Dictionary<string, object> ObservabilityProperties { get; set; } = new();
-
-    /// <inheritdoc />
-    public ValidationResult Validate()
+    public override ValidationResult Validate()
     {
         return Validate(true);
     }
@@ -59,14 +49,9 @@ public class BlobStorageRequest : IWorkflowRequest
     /// </summary>
     /// <param name="checkContent">A flag indicating whether to check the content.</param>
     /// <returns>A <see cref="ValidationResult"/> indicating whether the input is valid.</returns>
-    public ValidationResult Validate(bool checkContent)
+    public virtual ValidationResult Validate(bool checkContent)
     {
-        var result = new ValidationResult();
-
-        if (string.IsNullOrWhiteSpace(StorageAccountName))
-        {
-            result.AddErrorMessage($"{nameof(StorageAccountName)} is missing.");
-        }
+        var result = base.Validate();
 
         if (string.IsNullOrWhiteSpace(ContainerName))
         {

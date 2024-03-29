@@ -13,11 +13,11 @@ namespace DurableOrchestrator.AzureStorage;
 /// <summary>
 /// Defines a collection of activities for interacting with Azure Blob Storage.
 /// </summary>
-/// <param name="blobServiceClientFactory">The <see cref="BlobServiceClientFactory"/> instance used to interact with Azure Storage accounts.</param>
+/// <param name="storageClientFactory">The <see cref="StorageClientFactory"/> instance used to interact with Azure Storage accounts.</param>
 /// <param name="logger">The logger for capturing telemetry and diagnostic information.</param>
 [ActivitySource]
 public class BlobStorageActivities(
-    BlobServiceClientFactory blobServiceClientFactory,
+    StorageClientFactory storageClientFactory,
     ILogger<BlobStorageActivities> logger)
     : BaseActivity(nameof(BlobStorageActivities))
 {
@@ -37,7 +37,7 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobServiceClient = blobServiceClientFactory
+            var blobServiceClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName);
 
             var blobClient = blobServiceClient
@@ -104,7 +104,7 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobClient = blobServiceClientFactory
+            var blobClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName)
                 .GetBlobClient(input.BlobName);
@@ -152,7 +152,7 @@ public class BlobStorageActivities(
                 input.BlobName,
                 input.ContainerName);
 
-            var blobClient = blobServiceClientFactory
+            var blobClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName)
                 .GetBlobClient(input.BlobName);
@@ -195,7 +195,7 @@ public class BlobStorageActivities(
 
         try
         {
-            var blobContainerClient = blobServiceClientFactory
+            var blobContainerClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName);
 
@@ -246,7 +246,7 @@ public class BlobStorageActivities(
                 input.BlobName,
                 input.ContainerName);
 
-            var blobContainerClient = blobServiceClientFactory
+            var blobContainerClient = storageClientFactory
                 .GetBlobServiceClient(input.StorageAccountName)
                 .GetBlobContainerClient(input.ContainerName);
 
