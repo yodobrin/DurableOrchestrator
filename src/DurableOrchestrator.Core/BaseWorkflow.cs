@@ -3,6 +3,7 @@ using DurableOrchestrator.Core.Observability;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using OpenTelemetry.Trace;
+using System.Globalization;
 
 namespace DurableOrchestrator.Core;
 
@@ -141,4 +142,15 @@ public abstract class BaseWorkflow(string name)
             ? Tracer.StartActiveSpan(spanName, SpanKind.Internal, context.ExtractObservabilityContext())
             : Tracer.StartActiveSpan(spanName);
     }
+
+
+    protected static string FormatTemplate(string template, Dictionary<string, string> parameters)
+    {
+        foreach (var param in parameters)
+        {
+            template = template.Replace("{" + param.Key + "}", string.Format(CultureInfo.InvariantCulture, "{0}", param.Value));
+        }
+        return template;
+    }
+
 }

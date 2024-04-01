@@ -7,7 +7,7 @@ using DurableOrchestrator.Core.Observability;
 namespace DurableOrchestrator.Examples.Invoices;
 
 [ActivitySource]
-public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : BaseWorkflow(OrchestrationName)
+public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : BaseWorkflow(OrchestrationName), IDurableOrchestratorPrompts
 {
     private const string OrchestrationName = nameof(InvoiceDataExtractionWorkflow);
     private const string OrchestrationTriggerName = $"{OrchestrationName}_{nameof(QueueStart)}";
@@ -79,6 +79,11 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
 
         // step 5: prompt invoice data extraction using openai
         var invoiceDataStructure = Invoice.Empty;
+        // Here we provide the structure of the invoice data to be extracted, as a parameter to the user message template
+        var UserParameters = new Dictionary<string, string>
+        {
+            { "JsonStructure", JsonSerializer.Serialize(invoiceDataStructure) }
+        };
 
         var invoiceJsonData = await CallActivityAsync<string?>(
             context,
@@ -89,11 +94,10 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
                 MaxTokens = 4096,
                 Temperature = 0.1f,
                 TopP = 0.1f,
-                SystemPrompt =
-                    "You are an AI assistant that extracts data from documents and returns them as structured JSON objects. Do not return as a code block.",
+                SystemPrompt = IDurableOrchestratorPrompts.SystemExtractData2Json,
                 Messages =
                 [
-                    $"Extract the data from this invoice. If a value is not present, provide null. Use the following structure: {JsonSerializer.Serialize(invoiceDataStructure)}",
+                    FormatTemplate(IDurableOrchestratorPrompts.UserExtractData2JsonTemplate, UserParameters),
                     Encoding.UTF8.GetString(markdownContent)
                 ]
             },
@@ -115,7 +119,7 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
             invoiceData!);
 
         // step 6: store the invoice data in blob storage
-        input.InvoiceTargetInfo!.Buffer = JsonSerializer.SerializeToUtf8Bytes(invoiceEntity);
+        input.InvoiceTargetInfo!.Buffer = JsonSerializer.SerializeToUtf8Bytes(invoiceEntity, new JsonSerializerOptions { WriteIndented = true });
 
         await CallActivityAsync(
             context,
