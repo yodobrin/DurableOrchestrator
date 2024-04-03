@@ -55,6 +55,6 @@ The repository contains a ```local.settings.json.template``` file that you can u
 
 ## Workflow Development - Learn by Example
 
-We created an [example](./Examples/Invoices/Invoices.md) to guide you through the process of developing a data processing pipeline using the DurableOrchestrator solution. The example focuses on ingesting various invoice formats, utilizing Document Intelligence to extract text, transforming the data to JSON, ensuring a consistent output structure, error handling, and validation.
+We created an [example](./src/DurableOrchestrator/Examples/Invoices/Invoices.md) to guide you through the process of developing a data processing pipeline using the DurableOrchestrator solution. The example focuses on ingesting various invoice formats, utilizing Document Intelligence to extract text, transforming the data to JSON, ensuring a consistent output structure, error handling, and validation.
 
 
