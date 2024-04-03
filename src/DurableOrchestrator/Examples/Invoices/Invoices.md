@@ -10,6 +10,8 @@ The proposed solution leverages the capabilities of Document Intelligence, speci
 
 ### Process Flow
 
+![Sample Workflow](2024-04-01-12-19-00.png)
+
 1. **Document Ingestion**: The pipeline begins by ingesting the invoice documents received through different channels.
    
 2. **Text Extraction**: Utilizing Document Intelligence, the text is extracted from these documents and transformed into markdown representation.

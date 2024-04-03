@@ -69,5 +69,7 @@ While customers may not explicitly recognize their data processing needs as inst
 
 The DurableOrchestrator project leverages the power of Azure Durable Functions to offer a stateful, scalable solution for complex data management and processing workflows. It represents a strategic choice for businesses looking for control, customization, and seamless integration capabilities to meet their unique challenges.
 
+Next step would be to read further on the [Workflow Integration Guide](./WorkflowIntegrationGuide.md) to understand how to implement custom workflows with DurableOrchestrator.
+
 >Unseen Yet Ubiquitous
 The medallion paradigm, though not always recognized by name, underpins many of the data processing challenges businesses face today. `DurableOrchestrator` leverages this universal framework, providing a modern, cloud-based solution that speaks directly to the core needs of universal data ingestion and processing. By making this connection clear, customers can better understand the value and rationale behind the `DurableOrchestrator` approach, seeing it as a natural extension of their existing data management practices.
