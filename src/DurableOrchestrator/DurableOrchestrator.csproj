@@ -17,14 +17,17 @@
     <PackageReference Include="Contrib.Grpc.Core.M1" Version="2.41.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     <PackageReference Include="itext7" Version="8.0.3" />
     <PackageReference Include="itext7.bouncy-castle-adapter" Version="8.0.3" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.21.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.1.1" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="1.1.1" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage" Version="6.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" Version="6.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.2" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
     <PackageReference Include="OpenTelemetry" Version="1.7.0" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.7.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.7.0" />

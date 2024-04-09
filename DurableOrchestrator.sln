@@ -31,6 +31,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DurableOrchestrator.AzureOp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DurableOrchestrator.AzureTextAnalytics", "src\DurableOrchestrator.AzureTextAnalytics\DurableOrchestrator.AzureTextAnalytics.csproj", "{B018EB59-60DA-4B46-8D31-D57677B1339A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{60AF03D6-FC9D-456B-94AA-5AE128C79CD3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DurableOrchestrator.Tests", "tests\DurableOrchestrator.Tests\DurableOrchestrator.Tests.csproj", "{EE603F50-CECB-48F1-ACFA-9217AB9E19C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,6 +69,10 @@ Global
 		{B018EB59-60DA-4B46-8D31-D57677B1339A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B018EB59-60DA-4B46-8D31-D57677B1339A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B018EB59-60DA-4B46-8D31-D57677B1339A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE603F50-CECB-48F1-ACFA-9217AB9E19C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE603F50-CECB-48F1-ACFA-9217AB9E19C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE603F50-CECB-48F1-ACFA-9217AB9E19C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE603F50-CECB-48F1-ACFA-9217AB9E19C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -75,6 +83,7 @@ Global
 		{9BFD0C83-2BFF-408D-9B7B-DC026F8C52EE} = {EEF44080-5ED0-42A2-BEC2-D3D4C1A8BE51}
 		{6A5796DF-43C3-40A5-81F7-78B7BBD385DD} = {EEF44080-5ED0-42A2-BEC2-D3D4C1A8BE51}
 		{B018EB59-60DA-4B46-8D31-D57677B1339A} = {EEF44080-5ED0-42A2-BEC2-D3D4C1A8BE51}
+		{EE603F50-CECB-48F1-ACFA-9217AB9E19C4} = {60AF03D6-FC9D-456B-94AA-5AE128C79CD3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B30DA6BE-C55F-4508-A862-527E6B591FA4}

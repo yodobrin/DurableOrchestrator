@@ -9,15 +9,34 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults()
-    .ConfigureAppConfiguration((hostContext, configuration) =>
+/// <summary>
+/// Defines the entry point for the application.
+/// </summary>
+public class Program
+{
+    public static void Main(string[] args)
     {
-        configuration.SetBasePath(hostContext.HostingEnvironment.ContentRootPath)
+        var host = CreateHostBuilder(args).Build();
+        host.Run();
+    }
+
+    public static IHostBuilder CreateHostBuilder(string[] args)
+    {
+        return new HostBuilder()
+            .ConfigureFunctionsWebApplication()
+            .ConfigureFunctionsWorkerDefaults()
+            .ConfigureAppConfiguration(ConfigureAppConfiguration)
+            .ConfigureServices(ConfigureServices);
+    }
+
+    public static void ConfigureAppConfiguration(HostBuilderContext builder, IConfigurationBuilder configuration)
+    {
+        configuration.SetBasePath(builder.HostingEnvironment.ContentRootPath)
                      .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                      .AddEnvironmentVariables();
-    })
-    .ConfigureServices((builder, services) =>
+    }
+
+    public static void ConfigureServices(HostBuilderContext builder, IServiceCollection services)
     {
         services.AddSingleton(_ =>
         {
@@ -61,13 +80,5 @@ var host = new HostBuilder()
         services.AddDocumentIntelligence(builder.Configuration);
         // Required if OpenAI is used
         services.AddOpenAI(builder.Configuration);
-    })
-    .Build();
-
-host.Run();
-
-/// <summary>
-/// Defines the entry point for the application.
-/// </summary>
-public partial class Program;
-
+    }
+}

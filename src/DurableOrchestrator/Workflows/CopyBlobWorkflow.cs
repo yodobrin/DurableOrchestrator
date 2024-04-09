@@ -6,8 +6,8 @@ namespace DurableOrchestrator.Workflows;
 [ActivitySource]
 public class CopyBlobWorkflow() : BaseWorkflow(OrchestrationName)
 {
-    private const string OrchestrationName = nameof(CopyBlobWorkflow);
-    private const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
+    public const string OrchestrationName = nameof(CopyBlobWorkflow);
+    public const string OrchestrationTriggerName = $"{OrchestrationName}_HttpStart";
 
     /// <summary>
     /// Orchestrates the process of copying content from a source blob to a target blob. It involves validating the workflow input, retrieving the content of the source blob, and writing that content to the target blob.
