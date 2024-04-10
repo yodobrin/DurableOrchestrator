@@ -280,7 +280,7 @@ public class BlobStorageActivities(
     {
         using var span = StartActiveSpan(nameof(GetBlobsPage), input);
 
-        var validationResult = input.Validate(checkContent: false);
+        var validationResult = input.Validate();
         if (!validationResult.IsValid)
         {
             throw new ArgumentException(
@@ -294,7 +294,7 @@ public class BlobStorageActivities(
                 .GetBlobContainerClient(input.ContainerName);
 
             var blobNames = new List<string>();
-            string nextContinuationToken = null;
+            string? nextContinuationToken = null;
 
             try
             {
@@ -305,10 +305,7 @@ public class BlobStorageActivities(
                     {
                         blobNames.Add(blobItem.Name);
                     }
-                    nextContinuationToken = page.ContinuationToken;
-                    
-                    // If you want to stop after fetching just one page, you might break here.
-                    // Otherwise, remove the break to fetch all pages.
+                    nextContinuationToken = page.ContinuationToken;                
                     break;
                 }
             }
@@ -317,7 +314,7 @@ public class BlobStorageActivities(
                 logger.LogError($"Error fetching blobs: {ex.Message}");
                 throw; // Rethrowing the exception to handle it in the orchestrator
             }
-
+            // logger.LogInformation($"got continuation token: {input.ContinuationToken}\nnext continuation token: {nextContinuationToken}");
             return new BlobPagination
             {
                 ContinuationToken = nextContinuationToken,

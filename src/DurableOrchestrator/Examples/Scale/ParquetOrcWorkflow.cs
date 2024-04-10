@@ -25,7 +25,7 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
 
         using var span = StartActiveSpan(OrchestrationName, input);
         var log = context.CreateReplaySafeLogger(OrchestrationName);
-
+        
         var orchestrationResults = new WorkflowResult(OrchestrationName, log);
         // return orchestrationResults.Results;
         // step 2: validate the input
@@ -53,7 +53,7 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
             string? continuationToken = null;
             
             do
-            {
+            {                
                 var page = await CallActivityAsync<BlobPagination>(
                     context,
                     nameof(BlobStorageActivities.GetBlobsPage),
@@ -61,7 +61,6 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
                     {
                         ContainerName = input.SourceBlobStorageInfo.ContainerName,
                         StorageAccountName = input.SourceBlobStorageInfo.StorageAccountName,
-                        BlobName = string.Empty, // so it wont fail validation
                         PageSize = pageSize,
                         ContinuationToken = continuationToken
                     },
@@ -80,7 +79,7 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
                 );
                 workflows.Add(json2parquet);
                 continuationToken = page.ContinuationToken;
-            }while (continuationToken != null);
+            }while (string.IsNullOrEmpty(continuationToken) == false);
             // Await all the tasks to complete - this is the fan-in part
             bool[] allResults = await Task.WhenAll(workflows);
             // Check if all the tasks completed successfully
