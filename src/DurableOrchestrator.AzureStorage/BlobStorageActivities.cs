@@ -6,7 +6,11 @@ using DurableOrchestrator.Core.Observability;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Trace;
+using System.Text.Json;
+using Parquet;
+using Parquet.File;
 using BlobSasBuilder = Azure.Storage.Sas.BlobSasBuilder;
+using Azure.Storage.Blobs.Models;
 
 namespace DurableOrchestrator.AzureStorage;
 
@@ -271,4 +275,154 @@ public class BlobStorageActivities(
             span.RecordException(ex);
         }
     }
+    [Function(nameof(GetBlobsPage))]
+    public async Task<BlobPagination> GetBlobsPage([ActivityTrigger] BlobPagination input, FunctionContext executionContext)
+    {
+        using var span = StartActiveSpan(nameof(GetBlobsPage), input);
+
+        var validationResult = input.Validate(checkContent: false);
+        if (!validationResult.IsValid)
+        {
+            throw new ArgumentException(
+                $"{nameof(GetBlobsPage)}::{nameof(input)} is invalid. {validationResult}");
+        }
+
+        try
+        {
+            var containerClient = storageClientFactory
+                .GetBlobServiceClient(input.StorageAccountName)
+                .GetBlobContainerClient(input.ContainerName);
+
+            var blobNames = new List<string>();
+            string nextContinuationToken = null;
+
+            try
+            {
+                
+                await foreach (var page in containerClient.GetBlobsAsync().AsPages(input.ContinuationToken, input.PageSize))
+                {
+                    foreach (var blobItem in page.Values)
+                    {
+                        blobNames.Add(blobItem.Name);
+                    }
+                    nextContinuationToken = page.ContinuationToken;
+                    
+                    // If you want to stop after fetching just one page, you might break here.
+                    // Otherwise, remove the break to fetch all pages.
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Error fetching blobs: {ex.Message}");
+                throw; // Rethrowing the exception to handle it in the orchestrator
+            }
+
+            return new BlobPagination
+            {
+                ContinuationToken = nextContinuationToken,
+                PageSize = input.PageSize,
+                BlobNames = blobNames
+            };
+                    
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("{Activity} failed. {Error}", nameof(GetBlobsPage), ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+
+            throw;
+        }
+    }
+    
+    [Function(nameof(Json2Parquet))]
+    public async Task<bool> Json2Parquet([ActivityTrigger] CompoundStorageRequest input, FunctionContext executionContext)
+    {
+        using var span = StartActiveSpan(nameof(Json2Parquet), input);
+
+        var validationResult = input.Validate();
+        if (!validationResult.IsValid)
+        {
+            throw new ArgumentException(
+                $"{nameof(Json2Parquet)}::{nameof(input)} is invalid. {validationResult}");
+        }
+
+        try
+        {
+            foreach (var blobName in input.BlobNames)
+            {
+                
+                logger.LogInformation(
+                    "Attempting convert json lines in {BlobName} in container {ContainerName}",
+                    blobName,
+                    input.SourceStorageRequest.ContainerName);
+
+                var blobClient = storageClientFactory
+                    .GetBlobServiceClient(input.SourceStorageRequest.StorageAccountName)
+                    .GetBlobContainerClient(input.SourceStorageRequest.ContainerName)
+                    .GetBlobClient(blobName);
+
+                using var memoryStream = new MemoryStream();
+                await blobClient.DownloadToAsync(memoryStream);
+                var jsonLines = Encoding.UTF8.GetString(memoryStream.ToArray());
+                var lines = jsonLines.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var items = new List<DataItem>();
+                foreach (var line in lines)
+                {
+                    var item = JsonSerializer.Deserialize<DataItem>(line);
+                    if (item != null)
+                    {
+                        items.Add(item);
+                    }
+                }
+                // should an exception be thrown in case of no valid data items found?
+                if(items.Count == 0)
+                {
+                    logger.LogWarning("No valid data items found in {BlobName} in container {ContainerName}",
+                        input.SourceStorageRequest.BlobName,
+                        input.SourceStorageRequest.ContainerName);
+                    return false;
+                }
+                var columns = DataItem.ConvertToDataColumns(items);
+                // Writing to a Parquet file
+                using var parquetStream = new MemoryStream();
+                var schema = DataItem.GetSchema();
+                using (var parquetWriter = await ParquetWriter.CreateAsync(schema, parquetStream))
+                {
+                    parquetWriter.CompressionMethod = CompressionMethod.Snappy;
+                    parquetWriter.CompressionLevel = System.IO.Compression.CompressionLevel.Optimal;
+                    using (var rowGroupWriter = parquetWriter.CreateRowGroup())
+                    {
+                        foreach (var column in columns)
+                        {
+                            await rowGroupWriter.WriteColumnAsync(column);
+                        }
+                    }
+                }
+           
+                parquetStream.Flush();
+                parquetStream.Position = 0;
+
+                var blobTargetClient = storageClientFactory
+                    .GetBlobServiceClient(input.DestinationStorageRequest.StorageAccountName)
+                    .GetBlobContainerClient(input.DestinationStorageRequest.ContainerName)
+                    .GetBlobClient($"{blobName}_converted.parquet");
+                await blobTargetClient.UploadAsync(parquetStream, overwrite: true);
+            }
+
+            return true;
+            
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("{Activity} failed. {Error}", nameof(Json2Parquet), ex.Message);
+
+            span.SetStatus(Status.Error);
+            span.RecordException(ex);
+        }
+        return false;
+    }
+
 }
