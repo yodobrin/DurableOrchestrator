@@ -33,7 +33,8 @@ $Location = $InfrastructureOutputs.resourceGroupInfo.value.location
 $ResourceGroupName = $InfrastructureOutputs.resourceGroupInfo.value.name
 $WorkloadName = $InfrastructureOutputs.resourceGroupInfo.value.workloadName
 $ContainerRegistryName = $InfrastructureOutputs.containerRegistryInfo.value.name
-$GptModelDeploymentName = $InfrastructureOutputs.openAIInfo.value.modelDeploymentName
+$CompletionModelDeploymentName = $InfrastructureOutputs.openAIInfo.value.completionModelDeploymentName
+$EmbeddingModelDeploymentName = $InfrastructureOutputs.openAIInfo.value.embeddingModelDeploymentName
 
 $ContainerName = "durable-orchestrator"
 $ContainerVersion = (Get-Date -Format "yyMMddHHmm")
@@ -53,10 +54,6 @@ Write-Host "Pushing ${ContainerImageName} image..."
 docker tag $ContainerImageName $AzureContainerImageName
 docker push $AzureContainerImageName
 
-Write-Host "Clean up old images..."
-
-az acr run --cmd "acr purge --filter '${ContainerName}:.*' --untagged --ago 1h" --registry $ContainerRegistryName /dev/null
-
 Write-Host "Deploying container app..."
 
 $DeploymentOutputs = (az deployment group create --name durable-orchestrator-app --resource-group $ResourceGroupName --template-file './app.bicep' `
@@ -64,8 +61,13 @@ $DeploymentOutputs = (az deployment group create --name durable-orchestrator-app
         --parameters workloadName=$WorkloadName `
         --parameters location=$Location `
         --parameters durableOrchestratorContainerImage=$ContainerImageName `
-        --parameters gptModelDeploymentName=$GptModelDeploymentName `
+        --parameters openAICompletionModelName=$CompletionModelDeploymentName `
+        --parameters openAIEmbeddingModelName=$EmbeddingModelDeploymentName `
         --query properties.outputs -o json) | ConvertFrom-Json
 $DeploymentOutputs | ConvertTo-Json | Out-File -FilePath './AppOutputs.json' -Encoding utf8
+
+Write-Host "Clean up old images..."
+
+az acr run --cmd "acr purge --filter '${ContainerName}:.*' --untagged --ago 1h" --registry $ContainerRegistryName /dev/null
 
 return $DeploymentOutputs

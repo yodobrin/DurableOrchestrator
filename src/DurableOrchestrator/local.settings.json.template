@@ -3,6 +3,7 @@
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "MANAGED_IDENTITY_CLIENT_ID": "",
         "KEY_VAULT_URL": "",
         "DOCUMENT_INTELLIGENCE_ENDPOINT": "",
         "TEXT_ANALYTICS_ENDPOINT": "",
