@@ -3,6 +3,7 @@
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "MANAGED_IDENTITY_CLIENT_ID": "",
         "KEY_VAULT_URL": "",
         "DOCUMENT_INTELLIGENCE_ENDPOINT": "",
         "TEXT_ANALYTICS_ENDPOINT": "",
@@ -10,6 +11,7 @@
         "OPENAI_EMBEDDING_MODEL_DEPLOYMENT": "text-embedding-ada-002",
         "OPENAI_COMPLETION_MODEL_DEPLOYMENT": "gpt-35-turbo",
         "OPENAI_VISION_COMPLETION_MODEL_DEPLOYMENT": "gpt-4-vision-preview",
-        "OTLP_EXPORTER_ENDPOINT": "http://localhost:14317"
+        "OTLP_EXPORTER_ENDPOINT": "http://localhost:14317",
+        "JSON2PARQUET_EVENTHUB": "",
     }
 }

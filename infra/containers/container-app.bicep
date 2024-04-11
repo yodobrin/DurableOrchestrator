@@ -6,22 +6,39 @@ param location string = resourceGroup().location
 param tags object = {}
 
 type ingressConfigInfo = {
-    external: bool
-    targetPort: int
-    transport: string?
-    allowInsecure: bool
-    ipSecurityRestrictions: array?
+  external: bool
+  targetPort: int
+  transport: string?
+  allowInsecure: bool
+  ipSecurityRestrictions: array?
 }
 
 type resourceConfigInfo = {
-    cpu: string
-    memory: string
+  cpu: string
+  memory: string
 }
 
 type scaleConfigInfo = {
-    minReplicas: int
-    maxReplicas: int
-    rules: array?
+  minReplicas: int
+  maxReplicas: int
+  rules: array?
+}
+
+type secretInfo = {
+  @description('Name of the secret.')
+  name: string
+  @description('Value of the secret.')
+  value: string?
+  @description('Azure Key Vault secret URI for the secret value.')
+  keyVaultUrl: string?
+  @description('Managed Identity ID for accessing the Azure Key Vault.')
+  identity: string?
+}
+
+type environmentVariableInfo = {
+  name: string
+  value: string?
+  secretRef: string?
 }
 
 @description('ID for the Container Apps Environment associated with the Container App.')
@@ -38,27 +55,27 @@ param imageInContainerRegistry bool = true
 param containerImageName string
 @description('Ingress configuration for the container.')
 param containerIngress ingressConfigInfo = {
-    external: true
-    targetPort: 80
-    transport: 'auto'
-    allowInsecure: false
-    ipSecurityRestrictions: []
+  external: true
+  targetPort: 80
+  transport: 'auto'
+  allowInsecure: false
+  ipSecurityRestrictions: []
 }
 @description('Resource configuration for the container.')
 param containerResources resourceConfigInfo = {
-    cpu: '0.5'
-    memory: '1.0Gi'
+  cpu: '0.5'
+  memory: '1.0Gi'
 }
 @description('Scale configuration for the container.')
 param containerScale scaleConfigInfo = {
-    minReplicas: 1
-    maxReplicas: 3
-    rules: []
+  minReplicas: 1
+  maxReplicas: 3
+  rules: []
 }
 @description('Environment variables for the container.')
-param environmentVariables array = []
+param environmentVariables environmentVariableInfo[] = []
 @description('Secrets for the container.')
-param secrets array = []
+param secrets secretInfo[] = []
 @description('Volume definitions for the container.')
 param volumes array = []
 @description('Volume mounts for the container.')
@@ -69,49 +86,55 @@ param daprEnabled bool = false
 param daprAppId string = ''
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
-    name: name
-    location: location
-    tags: tags
-    identity: {
-        type: 'UserAssigned'
-        userAssignedIdentities: {
-            '${containerAppIdentityId}': {}
-        }
+  name: name
+  location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${containerAppIdentityId}': {}
     }
-    properties: {
-        environmentId: containerAppsEnvironmentId
-        workloadProfileName: workloadProfileName
-        configuration: {
-            secrets: secrets
-            registries: imageInContainerRegistry ? [
-                {
-                    server: '${containerRegistryName}.azurecr.io'
-                    identity: containerAppIdentityId
-                }
-            ] : []
-            dapr: daprEnabled ? {
-                enabled: true
-                appId: daprAppId
-                appPort: containerIngress.targetPort
-            } : {
-                enabled: false
+  }
+  properties: {
+    environmentId: containerAppsEnvironmentId
+    workloadProfileName: workloadProfileName
+    configuration: {
+      secrets: secrets
+      registries: imageInContainerRegistry
+        ? [
+            {
+              server: '${containerRegistryName}.azurecr.io'
+              identity: containerAppIdentityId
             }
-            ingress: containerIngress
-        }
-        template: {
-            containers: [
-                {
-                    image: imageInContainerRegistry ? '${containerRegistryName}.azurecr.io/${containerImageName}' : containerImageName
-                    name: name
-                    resources: containerResources
-                    env: environmentVariables
-                    volumeMounts: volumeMounts
-                }
-            ]
-            scale: containerScale
-            volumes: volumes
-        }
+          ]
+        : []
+      dapr: daprEnabled
+        ? {
+            enabled: true
+            appId: daprAppId
+            appPort: containerIngress.targetPort
+          }
+        : {
+            enabled: false
+          }
+      ingress: containerIngress
     }
+    template: {
+      containers: [
+        {
+          image: imageInContainerRegistry
+            ? '${containerRegistryName}.azurecr.io/${containerImageName}'
+            : containerImageName
+          name: name
+          resources: containerResources
+          env: environmentVariables
+          volumeMounts: volumeMounts
+        }
+      ]
+      scale: containerScale
+      volumes: volumes
+    }
+  }
 }
 
 @description('ID for the deployed Container App resource.')

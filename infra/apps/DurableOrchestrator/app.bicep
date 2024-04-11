@@ -17,10 +17,15 @@ param durableOrchestratorContainerImage string
 
 @description('Primary location for the deployed Document Intelligence service. Default is westeurope for latest preview support.')
 param documentIntelligenceLocation string = 'westeurope'
-@description('Primary location for the deployed OpenAI service. Default is francecentral for latest preview support.')
+
+@description('Location of the Azure OpenAI service for the application. Default is francecentral.')
 param openAILocation string = 'francecentral'
-@description('Name of the GPT model deployment to use for the OpenAI service. Default is gpt-35-turbo.')
-param gptModelDeploymentName string = 'gpt-35-turbo'
+@description('Name of the Azure OpenAI completion model for the application. Default is gpt-35-turbo.')
+param openAICompletionModelName string = 'gpt-35-turbo'
+@description('Name of the Azure OpenAI vision completion model for the application. Default is gpt-4-vision-preview.')
+param openAIVisionCompletionModelName string = 'gpt-4-vision-preview'
+@description('Name of the Azure OpenAI embedding model for the application. Default is text-embedding-ada-002.')
+param openAIEmbeddingModelName string = 'text-embedding-ada-002'
 
 var abbrs = loadJsonContent('../../abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
@@ -67,7 +72,28 @@ resource containerAppsEnvironmentRef 'Microsoft.App/managedEnvironments@2023-05-
   name: '${abbrs.containerAppsEnvironment}${resourceToken}'
 }
 
+resource eventHubNamespaceRef 'Microsoft.EventHub/namespaces@2024-01-01' existing = {
+  name: '${abbrs.eventHubsNamespace}${resourceToken}'
+}
+
 var durableOrchestratorToken = toLower(uniqueString(subscription().id, workloadName, location, 'durable-orchestrator'))
+var functionsWebJobStorageVariableName = 'AzureWebJobsStorage'
+var storageConnectionStringSecretName = 'storageconnectionstring'
+var jsonToParquetEventHubConnectionStringVariableName = 'JSON2PARQUET_EVENTHUB'
+var jsonToParquetEventHubConnectionStringSecretName = 'jsontoparqueteventhubconnectionstring'
+var applicationInsightsConnectionStringSecretName = 'applicationinsightsconnectionstring'
+
+module jsonToParquetEventHub '../../analytics/event-hub.bicep' = {
+  name: '${abbrs.eventHub}json2parquet'
+  params: {
+    name: 'json2parquet'
+    eventHubNamespaceName: eventHubNamespaceRef.name
+    keyVaultConfig: {
+      keyVaultName: keyVaultRef.name
+      connectionString: jsonToParquetEventHubConnectionStringSecretName
+    }
+  }
+}
 
 module durableOrchestratorApp '../../containers/container-app.bicep' = {
   name: '${abbrs.containerApp}${durableOrchestratorToken}'
@@ -88,8 +114,44 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
     }
     containerScale: {
       minReplicas: 1
-      maxReplicas: 1
+      maxReplicas: 3
+      rules: [
+        {
+          name: 'http'
+          http: {
+            metadata: {
+              concurrentRequests: '20'
+            }
+          }
+        }
+        {
+          name: 'jsontoparquet'
+          custom: {
+            type: 'azure-eventhub'
+            metadata: {
+              connection: jsonToParquetEventHubConnectionStringVariableName
+              storageConnection: functionsWebJobStorageVariableName
+              consumerGroup: '$default'
+            }
+          }
+        }
+      ]
     }
+    secrets: [
+      {
+        name: jsonToParquetEventHubConnectionStringSecretName
+        keyVaultUrl: jsonToParquetEventHub.outputs.connectionStringSecretUri
+        identity: managedIdentityRef.id
+      }
+      {
+        name: storageConnectionStringSecretName
+        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountRef.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
+      }
+      {
+        name: applicationInsightsConnectionStringSecretName
+        value: applicationInsightsRef.properties.ConnectionString
+      }
+    ]
     environmentVariables: [
       {
         name: 'FUNCTIONS_EXTENSION_VERSION'
@@ -101,11 +163,11 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
       }
       {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        value: applicationInsightsRef.properties.ConnectionString
+        secretRef: applicationInsightsConnectionStringSecretName
       }
       {
-        name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountRef.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
+        name: functionsWebJobStorageVariableName
+        secretRef: storageConnectionStringSecretName
       }
       {
         name: 'MANAGED_IDENTITY_CLIENT_ID'
@@ -128,8 +190,24 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
         value: openAIRef.properties.endpoint
       }
       {
+        name: 'OPENAI_COMPLETION_MODEL_DEPLOYMENT'
+        value: openAICompletionModelName
+      }
+      {
+        name: 'OPENAI_VISION_COMPLETION_MODEL_DEPLOYMENT'
+        value: openAIVisionCompletionModelName
+      }
+      {
+        name: 'OPENAI_EMBEDDING_MODEL_DEPLOYMENT'
+        value: openAIEmbeddingModelName
+      }
+      {
         name: 'WEBSITE_HOSTNAME'
         value: 'localhost'
+      }
+      {
+        name: jsonToParquetEventHubConnectionStringVariableName
+        secretRef: jsonToParquetEventHubConnectionStringSecretName
       }
     ]
   }

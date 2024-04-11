@@ -145,7 +145,7 @@ public class InvoiceDataExtractionWorkflow(OpenAISettings openAISettings) : Base
 
         if (invoice == null)
         {
-            throw new ArgumentNullException(nameof(invoice), $"{nameof(BlobStorageRequest)} is null.");
+            throw new ArgumentNullException(nameof(invoice), $"{nameof(InvoiceDataExtractionWorkflowRequest)} is null.");
         }
 
         var instanceId = await StartWorkflowAsync(
