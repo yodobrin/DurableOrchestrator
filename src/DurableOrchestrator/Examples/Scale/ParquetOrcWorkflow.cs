@@ -1,9 +1,9 @@
-using Microsoft.Azure.Functions.Worker.Extensions.EventHubs;
+// using Microsoft.Azure.Functions.Worker.Extensions.EventHubs;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.Core.Observability;
 // using Azure.Messaging.EventHubs;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+// using Azure.Storage.Blobs;
+// using Azure.Storage.Blobs.Models;
 
 namespace DurableOrchestrator.Examples.Scale;
 
@@ -32,11 +32,7 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
         var validationResult = input.Validate();
         if (!validationResult.IsValid)
         {
-            orchestrationResults.AddRange(
-                nameof(Json2ParquetOrchestrationRequest.Validate),
-                $"{nameof(input)} is invalid.",
-                validationResult.ValidationMessages,
-                LogLevel.Error);
+            orchestrationResults.AddRange(nameof(Json2ParquetOrchestrationRequest.Validate), $"{nameof(input)} is invalid.", validationResult.ValidationMessages, LogLevel.Error);
             return orchestrationResults.Results;
         }
 
@@ -49,34 +45,27 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
                 .GetBlobContainerClient(input.SourceBlobStorageInfo.ContainerName);
             
             List<Task<bool>> workflows = new List<Task<bool>>();
-            int pageSize = 100;
+            int pageSize = input.PageSize;
             string? continuationToken = null;
             
             do
             {                
-                var page = await CallActivityAsync<BlobPagination>(
-                    context,
-                    nameof(BlobStorageActivities.GetBlobsPage),
+                var page = await CallActivityAsync<BlobPagination>(context, nameof(BlobStorageActivities.GetBlobsPage),
                     new BlobPagination
                     {
                         ContainerName = input.SourceBlobStorageInfo.ContainerName,
                         StorageAccountName = input.SourceBlobStorageInfo.StorageAccountName,
                         PageSize = pageSize,
                         ContinuationToken = continuationToken
-                    },
-                    span.Context
-                );
-                Task<bool> json2parquet = CallActivityAsync<bool>(
-                    context,
-                    nameof(BlobStorageActivities.Json2Parquet),
+                    }, span.Context);
+                // fan-out per page of blobs
+                Task<bool> json2parquet = CallActivityAsync<bool>(context, nameof(BlobStorageActivities.Json2Parquet),
                     new CompoundStorageRequest
                     {
                         SourceStorageRequest = input.SourceBlobStorageInfo!,
                         DestinationStorageRequest = input.TargetBlobStorageInfo!,
                         BlobNames = page.BlobNames
-                    },
-                    span.Context
-                );
+                    }, span.Context);
                 workflows.Add(json2parquet);
                 continuationToken = page.ContinuationToken;
             }while (string.IsNullOrEmpty(continuationToken) == false);
@@ -115,7 +104,6 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
         {
             throw new ArgumentNullException(nameof(orcRequest), $"{nameof(Json2ParquetOrchestrationRequest)} is null.");
         }
-        // log.LogInformation($"Received request: {orcRequest}");
 
         var instanceId = await StartWorkflowAsync(
             starter,
@@ -128,8 +116,8 @@ public class ParquetOrcWorkflow(StorageClientFactory storageClientFactory) : Bas
 
     public class Json2ParquetOrchestrationRequest : BaseWorkflowRequest
     {
-        [JsonPropertyName("fanOut")]
-        public int FanOut { get; set; } = 1;
+        [JsonPropertyName("pageSize")]
+        public int PageSize { get; set; } = 100;
         [JsonPropertyName("folder")]
         public string ? Folder { get; set; } = string.Empty;
         [JsonPropertyName("sourceBlobStorageInfo")]

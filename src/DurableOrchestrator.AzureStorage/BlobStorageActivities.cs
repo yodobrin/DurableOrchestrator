@@ -275,6 +275,18 @@ public class BlobStorageActivities(
             span.RecordException(ex);
         }
     }
+
+    /// <summary>
+    /// Retrieves a page of blobs from a container in Azure Storage.
+    /// </summary>
+    /// <param name="input">The blob pagination information including the storage account, container, page size, and continuation token.</param>
+    /// <param name="executionContext">The function execution context for execution-related functionality.</param>
+    /// <returns>A <see cref="BlobPagination"/> object containing the list of blob names and the continuation token for the next page.</returns>
+    /// <exception cref="ArgumentException">Thrown when the input is invalid.</exception>
+    /// <exception cref="Exception">Thrown when an unhandled error occurs during the operation.</exception>
+    /// <remarks>
+    /// This activity retrieves a single page of blobs from a container in Azure Storage.
+    /// </remarks>    
     [Function(nameof(GetBlobsPage))]
     public async Task<BlobPagination> GetBlobsPage([ActivityTrigger] BlobPagination input, FunctionContext executionContext)
     {
@@ -305,7 +317,7 @@ public class BlobStorageActivities(
                     {
                         blobNames.Add(blobItem.Name);
                     }
-                    nextContinuationToken = page.ContinuationToken;                
+                    nextContinuationToken = page.ContinuationToken;
                     break;
                 }
             }
@@ -333,7 +345,13 @@ public class BlobStorageActivities(
             throw;
         }
     }
-    
+    /// <summary>
+    /// Converts JSON lines to Parquet format.
+    /// </summary>
+    /// <param name="input"></param>
+    /// <param name="executionContext"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
     [Function(nameof(Json2Parquet))]
     public async Task<bool> Json2Parquet([ActivityTrigger] CompoundStorageRequest input, FunctionContext executionContext)
     {
@@ -410,7 +428,6 @@ public class BlobStorageActivities(
             }
 
             return true;
-            
         }
         catch (Exception ex)
         {
