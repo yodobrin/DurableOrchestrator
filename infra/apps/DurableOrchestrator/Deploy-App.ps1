@@ -14,7 +14,6 @@
     .\Deploy-App.ps1 -InfrastructureOutputsPath "../../InfrastructureOutputs.json"
 .NOTES
     Author: James Croft
-    Last Updated: 2024-02-23
 #>
 
 param
@@ -22,10 +21,6 @@ param
     [Parameter(Mandatory = $true)]
     [string]$InfrastructureOutputsPath
 )
-
-Set-Location -Path $PSScriptRoot
-
-Write-Host "Deploying durable-orchestrator..."
 
 $InfrastructureOutputs = Get-Content -Path $InfrastructureOutputsPath -Raw | ConvertFrom-Json
 
@@ -41,6 +36,10 @@ $ContainerVersion = (Get-Date -Format "yyMMddHHmm")
 $ContainerImageName = "${ContainerName}:${ContainerVersion}"
 $AzureContainerImageName = "${ContainerRegistryName}.azurecr.io/${ContainerImageName}"
 
+Push-Location -Path $PSScriptRoot
+
+Write-Host "Starting ${ContainerName} deployment..."
+
 az --version
 
 Write-Host "Building ${ContainerImageName} image..."
@@ -49,12 +48,12 @@ az acr login --name $ContainerRegistryName
 
 docker build -t $ContainerImageName -f ../../../src/DurableOrchestrator/Dockerfile ../../../src/.
 
-Write-Host "Pushing ${ContainerImageName} image..."
+Write-Host "Pushing ${ContainerImageName} image to Azure..."
 
 docker tag $ContainerImageName $AzureContainerImageName
 docker push $AzureContainerImageName
 
-Write-Host "Deploying container app..."
+Write-Host "Deploying Azure Container Apps for ${ContainerName}..."
 
 $DeploymentOutputs = (az deployment group create --name durable-orchestrator-app --resource-group $ResourceGroupName --template-file './app.bicep' `
         --parameters '../../main.parameters.json' `
@@ -64,10 +63,13 @@ $DeploymentOutputs = (az deployment group create --name durable-orchestrator-app
         --parameters openAICompletionModelName=$CompletionModelDeploymentName `
         --parameters openAIEmbeddingModelName=$EmbeddingModelDeploymentName `
         --query properties.outputs -o json) | ConvertFrom-Json
+
 $DeploymentOutputs | ConvertTo-Json | Out-File -FilePath './AppOutputs.json' -Encoding utf8
 
-Write-Host "Clean up old images..."
+Write-Host "Cleaning up old ${ContainerName} images in Azure Container Registry..."
 
 az acr run --cmd "acr purge --filter '${ContainerName}:.*' --untagged --ago 1h" --registry $ContainerRegistryName /dev/null
+
+Pop-Location
 
 return $DeploymentOutputs

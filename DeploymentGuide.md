@@ -9,6 +9,7 @@ This guide provides details for the components deployed to Azure for the Durable
 - [**Azure Container Registry**](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-intro): Azure Container Registry is a managed, private Docker registry service that stores and manages your container images for Azure deployments. It is used to store the DurableOrchestrator container image.
 - [**Azure Key Vault**](https://learn.microsoft.com/en-us/azure/key-vault/general/overview): Azure Key Vault is a service to securely store and manage sensitive information, such as application secrets. It is used by the DurableOrchestrator sample workflows to retrieve secrets.
 - [**Azure Storage**](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blobs-overview): Azure Storage is a simple storage solution for modern data storage scenarios, such as file blobs. It is used by the DurableOrchestrator sample workflows to retrieve and create files.
+- [**Azure Event Hubs**](https://learn.microsoft.com/en-us/azure/event-hubs/event-hubs-about): Azure Event Hubs is a big data streaming platform and event ingestion service that can receive and process millions of events per second. It is used by the DurableOrchestrator sample workflows to receive events to trigger orchestrations.
 - [**Azure Text Analytics**](https://learn.microsoft.com/en-us/azure/ai-services/language-service/overview): Azure Text Analytics, a feature of Azure AI Language, is a service that provides advanced natural language processing over raw text. It is used by the DurableOrchestrator sample workflows to analyze text data.
 - [**Azure Document Intelligence**](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/overview?view=doc-intel-4.0.0): Azure Document Intelligence is a service that uses pre-built machine learning models to extract data from your documents, and allows you to create custom models for your document types. It is used by the DurableOrchestrator sample workflows to analyze documents.
 - [**Azure OpenAI**](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview): Azure OpenAI is a service that provides access to the OpenAI GPT models, that can generate a text output based on a given prompt.
@@ -38,36 +39,69 @@ Follow these steps to set up a local development environment on your machine:
 > [!TIP]
 > If you are using Visual Studio Code, we have provided [recommended extensions](./.vscode/extensions.json) for the project. Open the project in Visual Studio Code and follow the prompts to install the recommended extensions.
 
+### Deploy an environment
+
+At the root of the project, you will find a [`Setup-Environment.ps1`](./Setup-Environment.ps1) script that automates configuring either a local or Azure environment for the DurableOrchestrator project. The script automates the following tasks:
+
+- [Deploy the core infrastructure](#deploy-the-core-infrastructure)
+- [Deploy the DurableOrchestrator project](#deploy-the-durableorchestrator-project)
+
+> [!IMPORTANT]
+> If you use this script, you can skip the manual steps in this guide later for the above tasks.
+
+#### Deploying a local environment
+
+To deploy a local environment, run the following command from the root of the project replacing the deployment name and location with your desired values:
+
+```powershell
+.\Setup-Environment.ps1 -DeploymentName 'my-deployment' -Location 'westeurope' -IsLocal $true -SkipInfrastructure $false
+```
+
+This will deploy the core Azure infrastructure required for a local environment, and configure the Docker images for any locally running services. The script will also update the `local.settings.json` file with the required connection strings and configuration. You can then run the DurableOrchestrator project locally using the Azure Functions Core Tools in Visual Studio or Visual Studio Code.
+
+#### Deploying an Azure environment
+
+To deploy an Azure environment, run the following command from the root of the project replacing the deployment name and location with your desired values:
+
+```powershell
+.\Setup-Environment.ps1 -DeploymentName 'my-deployment' -Location 'westeurope' -IsLocal $false -SkipInfrastructure $false
+```
+
+This will deploy the core Azure infrastructure, as well as the DurableOrchestrator container app to Azure Container Apps. The script will create an `AppOutputs.json` file in the `infra/apps/DurableOrchestrator` directory with the output values of the deployed resources. You can then [test the workflows](#testing-the-workflows) using the provided REST API requests in the `src/DurableOrchestrator/tests` directory.
+
+<details>
+  <summary>Manual deployment</summary>
+
 ### Deploy the core infrastructure
 
-Within the `infra` directory, you will find a [`Deploy-Infrastucture.ps1`](./infra/Deploy-Infrastructure.ps1) script that will provision the core infrastructure for hosting the DurableOrchestrator project. This includes the Azure Container Apps, Azure Container Registry, Azure Key Vault, Azure Storage, Azure Text Analytics, and Azure Log Analytics resources.
+Within the `infra` directory, you will find a [`Deploy-Infrastucture.ps1`](./infra/Deploy-Infrastructure.ps1) script that will provision the core infrastructure for hosting the DurableOrchestrator project.
 
 > [!NOTE]
 > The script requires the Azure CLI to be installed and logged in to an Azure account. Ensure that you have the Azure CLI installed and are logged in to your Azure account before running the script. It will deploy the resources to your default subscription.
 
-1. If you are not logged in to your Azure account, run the following command to log in:
+1.  If you are not logged in to your Azure account, run the following command to log in:
 
-   ```powershell
-   az login
-   ```
+    ```powershell
+    az login
+    ```
 
-1. If you have multiple Azure subscriptions, run the following command to list the subscriptions and select the one you want to use:
+1.  If you have multiple Azure subscriptions, run the following command to list the subscriptions and select the one you want to use:
 
-   ```powershell
-   az account list --output table
-   ```
+    ```powershell
+    az account list --output table
+    ```
 
-   ```powershell
-   az account set --subscription <subscription-id>
-   ```
+    ```powershell
+    az account set --subscription <subscription-id>
+    ```
 
-1. Run the following command from the root of the project to deploy the core infrastructure:
+1.  Run the following command from the root of the project to deploy the core infrastructure:
 
-   ```powershell
-   .\infra\Deploy-Infrastructure.ps1 -DeploymentName <deployment-name> -Location <location>
-   ```
+    ```powershell
+    .\infra\Deploy-Infrastructure.ps1 -DeploymentName <deployment-name> -Location <location>
+    ```
 
-   Replace `<deployment-name>` with a unique name, e.g., `durable-orchestrator`, for the deployment and `<location>`, e.g., `westeurope`, with the Azure region where you want to deploy the resources. This deployment is run at the subscription level, so a resource group will be created for you using the deployment name at the specified location.
+    Replace `<deployment-name>` with a unique name, e.g., `durable-orchestrator`, for the deployment and `<location>`, e.g., `westeurope`, with the Azure region where you want to deploy the resources. This deployment is run at the subscription level, so a resource group will be created for you using the deployment name at the specified location.
 
 > [!NOTE]
 > The initial deployment may take roughly 5-10 minutes to complete while the Azure Container Apps environment activates. You should not need to run this script again unless you make changes to the `infra` Bicep templates.
@@ -85,16 +119,18 @@ Within the `infra\apps\DurableOrchestrator` directory, you will find a [`Deploy-
 
 The script will create a new container image using the Dockerfile with the name `durable-orchestrator` with a tag using the current date and time in the format `yyMMddHHmm`, e.g., `durable-orchestrator:2402231116`. It will then push the container image to Azure Container Registry and deploy the container image as an Azure Container App to the previously deployed Azure Container Apps environment.
 
-1. Run the following command from the root of the project to deploy the DurableOrchestrator project:
+1.  Run the following command from the root of the project to deploy the DurableOrchestrator project:
 
-   ```powershell
-   .\infra\apps\DurableOrchestrator\Deploy-App.ps1 -InfrastructureOutputsPath .\infra\InfrastructureOutputs.json
-   ```
+    ```powershell
+    .\infra\apps\DurableOrchestrator\Deploy-App.ps1 -InfrastructureOutputsPath .\infra\InfrastructureOutputs.json
+    ```
 
 > [!NOTE]
 > The initial build and deployment may take roughly 5-10 minutes to complete. You should not need to run this script again unless you make changes to the `src/DurableOrchestrator` project. For every subsequent deployment, the container image for the previously deployed Azure Container App will be updated, ensuring the URL remains the same.
 
 Once complete, a `AppOutputs.json` file will be created in the `infra\apps\DurableOrchestrator` directory. This file contains the output values of the deployed Azure Container App, including the URL to access the deployed Azure Functions container.
+
+</details>
 
 ## Testing the Workflows
 

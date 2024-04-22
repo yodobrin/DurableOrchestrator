@@ -28,7 +28,13 @@ resource openAIService 'Microsoft.CognitiveServices/accounts@2023-10-01-preview'
   kind: 'OpenAI'
   properties: {
     customSubDomainName: toLower(name)
+    disableLocalAuth: true
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
   }
   sku: {
     name: 'S0'

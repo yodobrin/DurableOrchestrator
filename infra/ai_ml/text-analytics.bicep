@@ -28,6 +28,7 @@ resource textAnalytics 'Microsoft.CognitiveServices/accounts@2023-10-01-preview'
   kind: 'TextAnalytics'
   properties: {
     customSubDomainName: toLower(name)
+    disableLocalAuth: true
     publicNetworkAccess: publicNetworkAccess
     networkAcls: {
       defaultAction: 'Allow'
@@ -41,28 +42,34 @@ resource textAnalytics 'Microsoft.CognitiveServices/accounts@2023-10-01-preview'
 }
 
 @batchSize(1)
-resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [for deployment in deployments: {
-  parent: textAnalytics
-  name: deployment.name
-  properties: {
-    model: contains(deployment, 'model') ? deployment.model : null
-    raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null
+resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [
+  for deployment in deployments: {
+    parent: textAnalytics
+    name: deployment.name
+    properties: {
+      model: contains(deployment, 'model') ? deployment.model : null
+      raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null
+    }
+    sku: contains(deployment, 'sku')
+      ? deployment.sku
+      : {
+          name: 'Standard'
+          capacity: 20
+        }
   }
-  sku: contains(deployment, 'sku') ? deployment.sku : {
-    name: 'Standard'
-    capacity: 20
-  }
-}]
+]
 
-resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for roleAssignment in roleAssignments: {
-  name: guid(textAnalytics.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
-  scope: textAnalytics
-  properties: {
-    principalId: roleAssignment.principalId
-    roleDefinitionId: roleAssignment.roleDefinitionId
-    principalType: 'ServicePrincipal'
+resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for roleAssignment in roleAssignments: {
+    name: guid(textAnalytics.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
+    scope: textAnalytics
+    properties: {
+      principalId: roleAssignment.principalId
+      roleDefinitionId: roleAssignment.roleDefinitionId
+      principalType: 'ServicePrincipal'
+    }
   }
-}]
+]
 
 @description('ID for the deployed Text Analytics resource.')
 output id string = textAnalytics.id

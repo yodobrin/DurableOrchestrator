@@ -15,7 +15,6 @@
     .\Deploy-Infrastructure.ps1 -DeploymentName "my-workflows" -Location "westeurope"
 .NOTES
     Author: James Croft
-    Last Updated: 2024-02-23
 #>
 
 param
@@ -26,9 +25,9 @@ param
     [string]$Location
 )
 
-Write-Host "Deploying infrastructure..."
+Write-Host "Starting infrastructure deployment..."
 
-Set-Location -Path $PSScriptRoot
+Push-Location -Path $PSScriptRoot
 
 az --version
 
@@ -38,5 +37,7 @@ $DeploymentOutputs = (az deployment sub create --name $DeploymentName --location
         --parameters location=$Location `
         --query properties.outputs -o json) | ConvertFrom-Json
 $DeploymentOutputs | ConvertTo-Json | Out-File -FilePath './InfrastructureOutputs.json' -Encoding utf8
+
+Pop-Location
 
 return $DeploymentOutputs

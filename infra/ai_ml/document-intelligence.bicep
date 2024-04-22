@@ -32,34 +32,46 @@ resource documentIntelligenceService 'Microsoft.CognitiveServices/accounts@2023-
   kind: 'FormRecognizer'
   properties: {
     customSubDomainName: toLower(name)
+    disableLocalAuth: true
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
   }
   sku: sku
 }
 
 @batchSize(1)
-resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [for deployment in deployments: {
-  parent: documentIntelligenceService
-  name: deployment.name
-  properties: {
-    model: contains(deployment, 'model') ? deployment.model : null
-    raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null
+resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [
+  for deployment in deployments: {
+    parent: documentIntelligenceService
+    name: deployment.name
+    properties: {
+      model: contains(deployment, 'model') ? deployment.model : null
+      raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null
+    }
+    sku: contains(deployment, 'sku')
+      ? deployment.sku
+      : {
+          name: 'Standard'
+          capacity: 20
+        }
   }
-  sku: contains(deployment, 'sku') ? deployment.sku : {
-    name: 'Standard'
-    capacity: 20
-  }
-}]
+]
 
-resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for roleAssignment in roleAssignments: {
-  name: guid(documentIntelligenceService.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
-  scope: documentIntelligenceService
-  properties: {
-    principalId: roleAssignment.principalId
-    roleDefinitionId: roleAssignment.roleDefinitionId
-    principalType: 'ServicePrincipal'
+resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for roleAssignment in roleAssignments: {
+    name: guid(documentIntelligenceService.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
+    scope: documentIntelligenceService
+    properties: {
+      principalId: roleAssignment.principalId
+      roleDefinitionId: roleAssignment.roleDefinitionId
+      principalType: 'ServicePrincipal'
+    }
   }
-}]
+]
 
 @description('ID for the deployed Document Intelligence resource.')
 output id string = documentIntelligenceService.id
