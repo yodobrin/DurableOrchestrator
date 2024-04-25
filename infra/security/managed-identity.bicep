@@ -6,9 +6,9 @@ param location string = resourceGroup().location
 param tags object = {}
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
-    name: name
-    location: location
-    tags: tags
+  name: name
+  location: location
+  tags: tags
 }
 
 @description('ID for the deployed Managed Identity resource.')

@@ -47,6 +47,7 @@ resource eventHubNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = 
     maximumThroughputUnits: maximumThroughputUnits
     publicNetworkAccess: publicNetworkAccess
     zoneRedundant: zoneRedundant
+    disableLocalAuth: true
   }
 }
 
