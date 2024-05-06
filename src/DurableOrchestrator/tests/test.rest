@@ -104,3 +104,20 @@ POST http://localhost:7071/api/EmbedTextWorkFlow_HttpStart
     "containerName": "targetcontainer" 
   }
 }
+
+
+### EventHub messages
+
+{
+    "sourceBlobStorageInfo": {
+      "storageAccountName": "targetextsa",
+      "blobName": "1CM4E-0.json",
+      "containerName": "aca2000"
+    },
+    "targetBlobStorageInfo": {
+      "storageAccountName": "targetextsa",
+      "blobName": "sample.parquet",
+      "containerName": "outputparquet"
+    },
+    "pageSize": 50 
+  }
