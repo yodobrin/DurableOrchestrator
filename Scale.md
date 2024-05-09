@@ -28,8 +28,8 @@ TBD, explain how the test env would be created, what resources, number of files,
 
 We will test two workflows:
 
-- Json2Parquet: This workflow will convert the content of a folder/container from JSON (lines) to Parquet format, it will retain the same folder structure. This workflow would have a configurable fan-out parameter.
-- InvoiceProcessing: This workflow will process invoices, extract relevant information, and store it in blob storage as json. The workflow would be executing several activity calls in sequence, calling Azure Document Intelligence and Azure OpenAI.
+- Json2Parquet: This workflow will convert the content of a folder/container from JSON (lines) to Parquet format, it will retain the same folder structure. This workflow would have a configurable fan-out parameter. Trigger by Event Hub.
+- InvoiceProcessing: This workflow will process invoices, extract relevant information, and store it in blob storage as json. The workflow would be executing several activity calls in sequence, calling Azure Document Intelligence and Azure OpenAI. Trigger by HTTP.
 
 We would perform the following tests: (initial draft)
 
