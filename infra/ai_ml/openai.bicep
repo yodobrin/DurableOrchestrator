@@ -10,14 +10,40 @@ type roleAssignmentInfo = {
   principalId: string
 }
 
+@description('Information about a model deployment for an OpenAI resource.')
+type modelDeploymentInfo = {
+  @description('Name for the model deployment. Must be unique within the OpenAI resource.')
+  name: string
+  @description('Information about the model to deploy.')
+  model: {
+    @description('Format of the model. Expects "OpenAI".')
+    format: string
+    @description('ID of the model, e.g., gpt-35-turbo. For more information on model IDs: https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models')
+    name: string
+    @description('Version of the model, e.g., 0125. For more information on model versions: https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models')
+    version: string
+  }?
+  @description('Name of the content filter policy to apply to the model deployment.')
+  raiPolicyName: string?
+  @description('Sizing for the model deployment.')
+  sku: {
+    @description('Name of the SKU. Expects "Standard".')
+    name: string
+    @description('TPM quota allocation for the model deployment. For more information on model quota limits per region: https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models')
+    capacity: int
+  }?
+}
+
 @description('List of model deployments.')
-param deployments array = []
+param deployments modelDeploymentInfo[] = []
 @description('Whether to enable public network access. Defaults to Enabled.')
 @allowed([
   'Enabled'
   'Disabled'
 ])
 param publicNetworkAccess string = 'Enabled'
+@description('Whether to disable local (key-based) authentication. Defaults to true.')
+param disableLocalAuth bool = true
 @description('Role assignments to create for the OpenAI instance.')
 param roleAssignments roleAssignmentInfo[] = []
 
@@ -28,7 +54,13 @@ resource openAIService 'Microsoft.CognitiveServices/accounts@2023-10-01-preview'
   kind: 'OpenAI'
   properties: {
     customSubDomainName: toLower(name)
+    disableLocalAuth: disableLocalAuth
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
   }
   sku: {
     name: 'S0'

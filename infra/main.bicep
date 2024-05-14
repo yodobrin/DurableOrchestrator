@@ -218,9 +218,27 @@ module applicationInsights './management_governance/application-insights.bicep' 
   }
 }
 
-resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+// Required RBAC roles for Azure Functions to access the storage account
+// https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob&pivots=programming-language-csharp#connecting-to-host-storage-with-an-identity
+
+resource storageAccountContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: resourceGroup
-  name: roles.storageBlobDataContributor
+  name: roles.storageAccountContributor
+}
+
+resource storageBlobDataOwner 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.storageBlobDataOwner
+}
+
+resource storageQueueDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.storageQueueDataContributor
+}
+
+resource storageTableDataContributor 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: resourceGroup
+  name: roles.storageTableDataContributor
 }
 
 module storageAccount './storage/storage-account.bicep' = {
@@ -233,15 +251,22 @@ module storageAccount './storage/storage-account.bicep' = {
     sku: {
       name: 'Standard_LRS'
     }
-    keyVaultConfig: {
-      keyVaultName: keyVault.outputs.name
-      primaryKeySecretName: 'StorageAccountPrimaryKey'
-      connectionStringSecretName: 'StorageAccountConnectionString'
-    }
     roleAssignments: [
       {
         principalId: managedIdentity.outputs.principalId
-        roleDefinitionId: storageBlobDataContributor.id
+        roleDefinitionId: storageAccountContributor.id
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageBlobDataOwner.id
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageQueueDataContributor.id
+      }
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionId: storageTableDataContributor.id
       }
     ]
   }
@@ -326,8 +351,6 @@ output applicationInsightsInfo object = {
 output storageAccountInfo object = {
   id: storageAccount.outputs.id
   name: storageAccount.outputs.name
-  primaryKeySecretUri: storageAccount.outputs.primaryKeySecretUri
-  connectionStringSecretUri: storageAccount.outputs.connectionStringSecretUri
 }
 
 output containerAppsEnvironmentInfo object = {

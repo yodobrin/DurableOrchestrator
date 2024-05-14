@@ -31,6 +31,8 @@ param isAutoInflateEnabled bool = false
 param maximumThroughputUnits int = 0
 @description('Value indicating whether the namespace is zone-redundant. Defaults to false.')
 param zoneRedundant bool = false
+@description('Whether to disable local (key-based) authentication. Defaults to true.')
+param disableLocalAuth bool = true
 @description('Role assignments to create for the Document Intelligence instance.')
 param roleAssignments roleAssignmentInfo[] = []
 
@@ -47,6 +49,7 @@ resource eventHubNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = 
     maximumThroughputUnits: maximumThroughputUnits
     publicNetworkAccess: publicNetworkAccess
     zoneRedundant: zoneRedundant
+    disableLocalAuth: disableLocalAuth
   }
 }
 

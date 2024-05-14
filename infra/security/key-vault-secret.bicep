@@ -8,17 +8,15 @@ param keyVaultName string
 param value string
 
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
-    name: keyVaultName
+  name: keyVaultName
 
-    resource keyVaultSecret 'secrets' = {
-        name: name
-        properties: {
-            value: value
-            attributes: {
-                enabled: true
-            }
-        }
+  resource keyVaultSecret 'secrets' = {
+    name: name
+    properties: {
+      value: value
+      attributes: {}
     }
+  }
 }
 
 @description('ID for the deployed Key Vault Secret resource.')

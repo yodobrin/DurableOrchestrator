@@ -9,18 +9,18 @@ param tags object = {}
 param logAnalyticsWorkspaceName string
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
-    name: logAnalyticsWorkspaceName
+  name: logAnalyticsWorkspaceName
 }
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
-    name: name
-    location: location
-    tags: tags
-    kind: 'web'
-    properties: {
-        Application_Type: 'web'
-        WorkspaceResourceId: logAnalyticsWorkspace.id
-    }
+  name: name
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalyticsWorkspace.id
+  }
 }
 
 @description('ID for the deployed Application Insights resource.')

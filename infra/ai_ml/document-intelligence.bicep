@@ -14,14 +14,14 @@ type roleAssignmentInfo = {
 param sku object = {
   name: 'S0'
 }
-@description('List of deployments for Document Intelligence.')
-param deployments array = []
 @description('Whether to enable public network access. Defaults to Enabled.')
 @allowed([
   'Enabled'
   'Disabled'
 ])
 param publicNetworkAccess string = 'Enabled'
+@description('Whether to disable local (key-based) authentication. Defaults to true.')
+param disableLocalAuth bool = true
 @description('Role assignments to create for the Document Intelligence instance.')
 param roleAssignments roleAssignmentInfo[] = []
 
@@ -30,36 +30,33 @@ resource documentIntelligenceService 'Microsoft.CognitiveServices/accounts@2023-
   location: location
   tags: tags
   kind: 'FormRecognizer'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     customSubDomainName: toLower(name)
+    disableLocalAuth: disableLocalAuth
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
+    }
   }
   sku: sku
 }
 
-@batchSize(1)
-resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = [for deployment in deployments: {
-  parent: documentIntelligenceService
-  name: deployment.name
-  properties: {
-    model: contains(deployment, 'model') ? deployment.model : null
-    raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null
+resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for roleAssignment in roleAssignments: {
+    name: guid(documentIntelligenceService.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
+    scope: documentIntelligenceService
+    properties: {
+      principalId: roleAssignment.principalId
+      roleDefinitionId: roleAssignment.roleDefinitionId
+      principalType: 'ServicePrincipal'
+    }
   }
-  sku: contains(deployment, 'sku') ? deployment.sku : {
-    name: 'Standard'
-    capacity: 20
-  }
-}]
-
-resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for roleAssignment in roleAssignments: {
-  name: guid(documentIntelligenceService.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
-  scope: documentIntelligenceService
-  properties: {
-    principalId: roleAssignment.principalId
-    roleDefinitionId: roleAssignment.roleDefinitionId
-    principalType: 'ServicePrincipal'
-  }
-}]
+]
 
 @description('ID for the deployed Document Intelligence resource.')
 output id string = documentIntelligenceService.id
@@ -69,3 +66,5 @@ output name string = documentIntelligenceService.name
 output endpoint string = documentIntelligenceService.properties.endpoint
 @description('Host for the deployed Document Intelligence resource.')
 output host string = split(documentIntelligenceService.properties.endpoint, '/')[2]
+@description('Identity principal ID for the deployed Document Intelligence resource.')
+output systemIdentityPrincipalId string = documentIntelligenceService.identity.principalId

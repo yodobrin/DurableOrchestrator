@@ -28,6 +28,7 @@ param openAIVisionCompletionModelName string = 'gpt-4-vision-preview'
 param openAIEmbeddingModelName string = 'text-embedding-ada-002'
 
 var abbrs = loadJsonContent('../../abbreviations.json')
+var roles = loadJsonContent('../../roles.json')
 var resourceToken = toLower(uniqueString(subscription().id, workloadName, location))
 var documentIntelligenceResourceToken = toLower(uniqueString(
   subscription().id,
@@ -72,26 +73,30 @@ resource containerAppsEnvironmentRef 'Microsoft.App/managedEnvironments@2023-05-
   name: '${abbrs.containerAppsEnvironment}${resourceToken}'
 }
 
-resource eventHubNamespaceRef 'Microsoft.EventHub/namespaces@2024-01-01' existing = {
+resource eventHubNamespaceRef 'Microsoft.EventHub/namespaces@2023-01-01-preview' existing = {
   name: '${abbrs.eventHubsNamespace}${resourceToken}'
 }
 
 var durableOrchestratorToken = toLower(uniqueString(subscription().id, workloadName, location, 'durable-orchestrator'))
 var functionsWebJobStorageVariableName = 'AzureWebJobsStorage'
-var storageConnectionStringSecretName = 'storageconnectionstring'
 var jsonToParquetEventHubConnectionStringVariableName = 'JSON2PARQUET_EVENTHUB'
-var jsonToParquetEventHubConnectionStringSecretName = 'jsontoparqueteventhubconnectionstring'
 var applicationInsightsConnectionStringSecretName = 'applicationinsightsconnectionstring'
+
+resource azureEventHubsDataOwner 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: roles.azureEventHubsDataOwner
+}
 
 module jsonToParquetEventHub '../../analytics/event-hub.bicep' = {
   name: '${abbrs.eventHub}json2parquet'
   params: {
     name: 'json2parquet'
     eventHubNamespaceName: eventHubNamespaceRef.name
-    keyVaultConfig: {
-      keyVaultName: keyVaultRef.name
-      connectionString: jsonToParquetEventHubConnectionStringSecretName
-    }
+    roleAssignments: [
+      {
+        principalId: managedIdentityRef.properties.principalId
+        roleDefinitionId: azureEventHubsDataOwner.id
+      }
+    ]
   }
 }
 
@@ -124,29 +129,26 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
             }
           }
         }
-        {
-          name: 'jsontoparquet'
-          custom: {
-            type: 'azure-eventhub'
-            metadata: {
-              connection: jsonToParquetEventHubConnectionStringVariableName
-              storageConnection: functionsWebJobStorageVariableName
-              consumerGroup: '$default'
-            }
-          }
-        }
+        // KEDA scalers do not currently support Azure Managed Identity for authentication. Feature enhancement tracker: https://github.com/microsoft/azure-container-apps/issues/592
+        // {
+        //   name: 'jsontoparquet'
+        //   custom: {
+        //     type: 'azure-eventhub'
+        //     metadata: {
+        //       connection: jsonToParquetEventHubConnectionStringVariableName
+        //       storageConnection: functionsWebJobStorageVariableName
+        //       consumerGroup: '$default'
+        //     }
+        //   }
+        // }
       ]
     }
     secrets: [
-      {
-        name: jsonToParquetEventHubConnectionStringSecretName
-        keyVaultUrl: jsonToParquetEventHub.outputs.connectionStringSecretUri
-        identity: managedIdentityRef.id
-      }
-      {
-        name: storageConnectionStringSecretName
-        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountRef.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountRef.listKeys().keys[0].value}'
-      }
+      // {
+      //   name: jsonToParquetEventHubConnectionStringSecretName
+      //   keyVaultUrl: jsonToParquetEventHub.outputs.connectionStringSecretUri
+      //   identity: managedIdentityRef.id
+      // }
       {
         name: applicationInsightsConnectionStringSecretName
         value: applicationInsightsRef.properties.ConnectionString
@@ -166,8 +168,16 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
         secretRef: applicationInsightsConnectionStringSecretName
       }
       {
-        name: functionsWebJobStorageVariableName
-        secretRef: storageConnectionStringSecretName
+        name: '${functionsWebJobStorageVariableName}__accountName'
+        value: storageAccountRef.name
+      }
+      {
+        name: '${functionsWebJobStorageVariableName}__credential'
+        value: 'managedidentity'
+      }
+      {
+        name: '${functionsWebJobStorageVariableName}__clientId'
+        value: managedIdentityRef.properties.clientId
       }
       {
         name: 'MANAGED_IDENTITY_CLIENT_ID'
@@ -206,8 +216,16 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
         value: 'localhost'
       }
       {
-        name: jsonToParquetEventHubConnectionStringVariableName
-        secretRef: jsonToParquetEventHubConnectionStringSecretName
+        name: '${jsonToParquetEventHubConnectionStringVariableName}__fullyQualifiedNamespace'
+        value: eventHubNamespaceRef.properties.serviceBusEndpoint
+      }
+      {
+        name: '${jsonToParquetEventHubConnectionStringVariableName}__credential'
+        value: 'managedidentity'
+      }
+      {
+        name: '${jsonToParquetEventHubConnectionStringVariableName}__clientId'
+        value: managedIdentityRef.properties.clientId
       }
     ]
   }
