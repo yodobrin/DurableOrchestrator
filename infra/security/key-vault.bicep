@@ -18,6 +18,10 @@ type roleAssignmentInfo = {
 param skuName string = 'standard'
 @description('Whether soft deletion is enabled. Defaults to true.')
 param enableSoftDelete bool = true
+@description('Number of days to retain soft-deleted keys, secrets, and certificates. Defaults to 90.')
+param retentionInDays int = 90
+@description('Whether purge protection is enabled. Defaults to true.')
+param enablePurgeProtection bool = true
 @description('Role assignments to create for the Key Vault.')
 param roleAssignments roleAssignmentInfo[] = []
 
@@ -38,6 +42,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     enableSoftDelete: enableSoftDelete
     enabledForTemplateDeployment: true
     enableRbacAuthorization: true
+    enablePurgeProtection: enablePurgeProtection
+    softDeleteRetentionInDays: retentionInDays
   }
 }
 
