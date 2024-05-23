@@ -58,8 +58,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   properties: {
     accessTier: startsWith(sku.name, 'Premium') ? 'Premium' : accessTier
     networkAcls: {
+      defaultAction: 'Deny'
       bypass: 'AzureServices'
-      defaultAction: 'Allow'
+      ipRules: []
+      virtualNetworkRules: []
     }
     allowSharedKeyAccess: !disableLocalAuth
     supportsHttpsTrafficOnly: true

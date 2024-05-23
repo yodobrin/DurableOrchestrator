@@ -36,8 +36,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     }
     tenantId: subscription().tenantId
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: 'Deny'
       bypass: 'AzureServices'
+      ipRules: []
+      virtualNetworkRules: []
     }
     enableSoftDelete: enableSoftDelete
     enabledForTemplateDeployment: true

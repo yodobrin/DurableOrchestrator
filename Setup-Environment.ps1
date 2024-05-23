@@ -10,7 +10,7 @@
 .PARAMETER SkipInfrastructure
     Whether to skip the infrastructure deployment. Requires InfrastructureOutputs.json to exist in the infra directory.
 .EXAMPLE
-    .\Setup-Environment.ps1 -DeploymentName 'my-deployment' -Location 'westeurope' -IsLocal $false -SkipInfrastructure $false
+    .\Setup-Environment.ps1 -DeploymentName 'durable-orchestrator' -Location 'westeurope' -IsLocal '$false' -SkipInfrastructure '$false'
 .NOTES
     Author: James Croft
     Date: 2024-04-22

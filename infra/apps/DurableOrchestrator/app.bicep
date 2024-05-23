@@ -129,6 +129,26 @@ module durableOrchestratorApp '../../containers/container-app.bicep' = {
             }
           }
         }
+        {
+          name: 'cpu'
+          custom: {
+            type: 'cpu'
+            metadata: {
+              type: 'Utilization'
+              value: '80'
+            }
+          }
+        }
+        {
+          name: 'memory'
+          custom: {
+            type: 'memory'
+            metadata: {
+              type: 'Utilization'
+              value: '80'
+            }
+          }
+        }
         // KEDA scalers do not currently support Azure Managed Identity for authentication. Feature enhancement tracker: https://github.com/microsoft/azure-container-apps/issues/592
         // {
         //   name: 'jsontoparquet'
