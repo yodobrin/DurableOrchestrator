@@ -1,0 +1,36 @@
+using Azure.Core;
+using Microsoft.CognitiveServices.Speech;
+using Azure.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace DurableOrchestrator.AzureSpeechAnalytics;
+
+/// <summary>
+/// Defines a set of extension methods for configuring Azure AI Text Analytics services.
+/// </summary>
+public static class SpeechAnalyticsExtensions
+{
+    /// <summary>
+    /// Configures the Azure AI Voice/Speech Analytics services for the application.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add the Azure AI Text Analytics services to.</param>
+    /// <param name="configuration">The application configuration to retrieve Azure AI Text Analytics settings from.</param>
+    /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
+    public static IServiceCollection AddVoiceAnalytics(this IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = SpeechAnalyticsSettings.FromConfiguration(configuration);
+        
+        services.AddScoped(_ => settings);
+
+        services.AddScoped(async sp =>
+        {
+            var credential = new DefaultAzureCredential();
+            var tokenRequestContext = new TokenRequestContext(new[] { "https://cognitiveservices.azure.com/.default" });
+            var token = await credential.GetTokenAsync(tokenRequestContext);
+            return SpeechConfig.FromEndpoint(new Uri(settings.SpeechEndpoint), token.Token);
+        });
+
+        return services;
+    }
+}
