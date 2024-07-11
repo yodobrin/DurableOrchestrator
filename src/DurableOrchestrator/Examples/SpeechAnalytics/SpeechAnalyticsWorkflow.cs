@@ -84,7 +84,7 @@ namespace DurableOrchestrator.Examples.SpeechAnalytics;
             {
                 throw new ArgumentException("The request body must not be null or empty.", nameof(req));
             }
-
+log.LogInformation("Received request with body: {requestBody}", requestBody);
             var instanceId = await StartWorkflowAsync(
                 starter,
                 ExtractInput<SpeechAnalyticsWorkflowRequest>(requestBody),
@@ -98,6 +98,9 @@ namespace DurableOrchestrator.Examples.SpeechAnalytics;
 
     public class SpeechAnalyticsWorkflowRequest : BaseWorkflowRequest
     {
+        [JsonPropertyName("operationType")]
+        public string? OperationType { get; set; }
+        
         [JsonPropertyName("audioFilePath")]
         public string? AudioFilePath { get; set; }
 

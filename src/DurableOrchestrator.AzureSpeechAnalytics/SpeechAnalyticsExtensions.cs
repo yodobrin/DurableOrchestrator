@@ -20,15 +20,17 @@ public static class SpeechAnalyticsExtensions
     public static IServiceCollection AddVoiceAnalytics(this IServiceCollection services, IConfiguration configuration)
     {
         var settings = SpeechAnalyticsSettings.FromConfiguration(configuration);
-        
-        services.AddScoped(_ => settings);
+    
+        services.AddSingleton(settings);
 
-        services.AddScoped(async sp =>
+        services.AddSingleton(sp =>
         {
             var credential = new DefaultAzureCredential();
             var tokenRequestContext = new TokenRequestContext(new[] { "https://cognitiveservices.azure.com/.default" });
-            var token = await credential.GetTokenAsync(tokenRequestContext);
-            return SpeechConfig.FromEndpoint(new Uri(settings.SpeechEndpoint), token.Token);
+            var accessToken = credential.GetToken(tokenRequestContext);
+            var resourceId = settings.SpeechResourceID;
+            var authorizationToken = $"aad#{resourceId}#{accessToken.Token}";
+            return SpeechConfig.FromAuthorizationToken(authorizationToken,settings.SpeechRegion);
         });
 
         return services;

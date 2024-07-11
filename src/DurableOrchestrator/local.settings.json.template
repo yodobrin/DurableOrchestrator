@@ -13,5 +13,7 @@
         "OPENAI_VISION_COMPLETION_MODEL_DEPLOYMENT": "gpt-4-vision-preview",
         "OTLP_EXPORTER_ENDPOINT": "http://localhost:14317",
         "JSON2PARQUET_EVENTHUB": "",
+        "SPEECH_ANALYTICS_RESOURCE_ID": "",
+        "SPEECH_ANALYTICS_REGION": "WestEurope"
     }
 }

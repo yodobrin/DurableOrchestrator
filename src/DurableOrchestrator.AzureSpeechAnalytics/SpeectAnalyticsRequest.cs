@@ -11,8 +11,8 @@ public class SpeechAnalyticsRequest : IWorkflowRequest
     /// <summary>
     /// Gets or sets the operation types to perform on the text.
     /// </summary>
-    [JsonPropertyName("operationTypes")]
-    public List<string>? OperationTypes { get; set; } = new(); // e.g., ["speech2text", "text2speech"]
+    [JsonPropertyName("operationType")]
+    public string? OperationType { get; set; } = string.Empty; // e.g., ["speech2text", "text2speech"]
 
     /// <summary>
     /// Gets or sets the text to process.
@@ -35,18 +35,19 @@ public class SpeechAnalyticsRequest : IWorkflowRequest
     public ValidationResult Validate()
     {
         var result = new ValidationResult();
-
-        if (OperationTypes == null || OperationTypes.Count == 0)
+        // check if the operation type is missing
+        if (string.IsNullOrEmpty(OperationType))
         {
-            result.AddErrorMessage($"{nameof(OperationTypes)} are missing.");
+            result.AddErrorMessage($"{nameof(OperationType)} is missing.");
         }
-        // check if its speech2text and the bytes are empty
-        else if (OperationTypes.Contains("speech2text") && string.IsNullOrEmpty(AudioFilePath) )
+
+        // check if its speech2text and the file path are empty
+        if (OperationType.Equals("speech2text") && string.IsNullOrEmpty(AudioFilePath) )
         {
             result.AddErrorMessage($"{nameof(AudioFilePath)} is missing.");
         }
         // check if its text2speech and the text is empty
-        else if (OperationTypes.Contains("text2speech") && string.IsNullOrWhiteSpace(TextsToProcess))
+        else if (OperationType.Equals("text2speech") && string.IsNullOrWhiteSpace(TextsToProcess))
         {
             result.AddErrorMessage($"{nameof(TextsToProcess)} is missing.");
         }

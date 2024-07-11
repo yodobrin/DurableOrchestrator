@@ -2,6 +2,7 @@ using Azure.Identity;
 using DurableOrchestrator.AzureDocumentIntelligence;
 using DurableOrchestrator.AzureKeyVault;
 using DurableOrchestrator.AzureOpenAI;
+using DurableOrchestrator.AzureSpeechAnalytics;
 using DurableOrchestrator.AzureStorage;
 using DurableOrchestrator.AzureTextAnalytics;
 using DurableOrchestrator.Core.Observability;
@@ -61,6 +62,8 @@ var host = new HostBuilder()
         services.AddDocumentIntelligence(builder.Configuration);
         // Required if OpenAI is used
         services.AddOpenAI(builder.Configuration);
+        // required when using Speech Analytics
+        services.AddVoiceAnalytics(builder.Configuration);
     })
     .Build();
 

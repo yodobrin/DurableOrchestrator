@@ -121,3 +121,17 @@ POST http://localhost:7071/api/EmbedTextWorkFlow_HttpStart
     },
     "pageSize": 50 
   }
+
+### Speech Analytics
+
+POST http://localhost:7071/api/SpeechAnalyticsWorkflow_HttpStart
+
+{
+    "operationType": "speech2text",
+    "audioFilePath": "/Users/yoavdobrin/workspace/fta/event_processing/src/DurableOrchestrator/tests/sample_call_audio.wav",
+     "targetBlobStorageInfo": {
+      "storageAccountName": "targetextsa",
+      "blobName": "sample.json",
+      "containerName": "transcriptions"
+    }
+}
